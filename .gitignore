@@ -1,39 +1,19 @@
 # Python
 __pycache__/
-*.py[cod]
-*.so
+*.pyc
 
-# Virtual environments
+# Virtual environment
 venv/
-.venv/
-env/
-
-# Environment variables
 .env
 
-# IDEs
+# IDE
 .vscode/
-.idea/
+
+# OS
+.DS_Store
 
 # Logs
 *.log
 
-# Python caches
+# Cache
 .pytest_cache/
-.mypy_cache/
-.coverage
-htmlcov/
-
-# Build
-build/
-dist/
-*.egg-info/
-
-# Machine Learning
-models/
-*.joblib
-*.pkl
-
-# OS
-.DS_Store
-Thumbs.db
