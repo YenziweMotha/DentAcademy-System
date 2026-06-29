@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Python caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Machine Learning
+models/
+*.joblib
+*.pkl
+
+# OS
+.DS_Store
+Thumbs.db
