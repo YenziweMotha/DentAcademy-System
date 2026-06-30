@@ -17,3 +17,6 @@ venv/
 
 # Cache
 .pytest_cache/
+
+#SSH key
+.pub
