@@ -33,12 +33,12 @@ class MentorOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class MentorAssignmentCreate(BaseModel):
+class AssignmentCreate(BaseModel):
     apprentice_id: int
     assigned_date: Optional[date] = None
 
 
-class MentorAssignmentOut(BaseModel):
+class AssignmentOut(BaseModel):
     assignment_id: int
     mentor_id: int
     apprentice_id: int

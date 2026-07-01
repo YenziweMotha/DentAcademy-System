@@ -5,7 +5,7 @@ from database import get_db
 from models.prediction import AIPrediction
 from models.apprentice import Apprentice
 from models.user import User
-from schemas.prediction import PredictionOut, PredictionSafeOut
+from schemas.prediction import PredictionOut, PredictionDetailOut
 from middleware.auth_middleware import get_current_user, require_supervisor, require_admin_or_supervisor
 from middleware.audit_middleware import log_audit_action
 
