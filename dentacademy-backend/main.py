@@ -10,8 +10,9 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="DentAcademy Management Portal")
 
+#FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-
+print(f"FRONTEND_URL = {repr(FRONTEND_URL)}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_URL],

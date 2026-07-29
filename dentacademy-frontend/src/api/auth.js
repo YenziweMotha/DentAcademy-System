@@ -1,21 +1,23 @@
 import api from './axios';
 
 export const login = async (username, password) => {
-  const formData = new URLSearchParams();
-  formData.append('username', username);
-  formData.append('password', password);
-  const response = await api.post('/auth/login', formData, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-  return response.data;
-};
+    const response = await api.post("/api/auth/login", {
+        username,
+        password
+    });
 
+    localStorage.setItem("access_token", response.data.access_token);
+
+    return response.data;
+};
 export const logout = async () => {
-  const response = await api.post('/auth/logout');
-  return response.data;
-};
+    localStorage.removeItem("access_token");
 
+    const response = await api.post("/api/auth/logout");
+
+    return response.data;
+};
 export const getMe = async () => {
-  const response = await api.get('/auth/me');
+  const response = await api.get('api/auth/me');
   return response.data;
 };

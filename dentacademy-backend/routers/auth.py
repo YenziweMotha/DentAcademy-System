@@ -21,6 +21,10 @@ class LoginData(BaseModel):
     username: str
     password: str
 
+@router.options("/login")
+async def login_options():
+    print("OPTIONS RECEIVED")
+    return {"ok": True}
 
 @router.post("/login", response_model=Token)
 def login(request: Request, form_data: LoginData, db: Session = Depends(get_db)):

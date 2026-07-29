@@ -9,8 +9,11 @@ from database import Base
 import models
 
 config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+#if config.config_file_name is not None:
+#   fileConfig(config.config_file_name)
+DATABASE_URL="mysql+pymysql://user:password@localhost/dentacademy_db"
+config.set_main_option('sqlalchemy.url', os.getenv('DATABASE_URL', config.get_main_option('sqlalchemy.url')))
+
 
 target_metadata = Base.metadata
 

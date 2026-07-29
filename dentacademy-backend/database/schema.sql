@@ -5,6 +5,8 @@ CREATE TABLE users (
     full_name VARCHAR(150) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     contact_number VARCHAR(20),
+    reset_token VARCHAR(255) NULL,
+    reset_token_expiry DATETIME NULL,
     role ENUM('Administrator','Supervisor','Mentor','Apprentice') NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     last_login DATETIME,
