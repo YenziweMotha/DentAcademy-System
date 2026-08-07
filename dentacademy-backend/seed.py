@@ -70,10 +70,15 @@ fake = Faker("zu_ZA")
 # ------------------------------------------------------------------
 # Dataset Size
 # ------------------------------------------------------------------
+# NOTE: Scaled down for local/testing use.
+# 1 Administrator, 1 Supervisor, 2 Mentors, 50 Apprentices, and
+# everything derived from them (education, attendance, module
+# progress, evaluations, AI predictions, audit logs) scales down
+# automatically since those all iterate over `mentors`/`apprentices`.
 
-NUMBER_OF_APPRENTICES = 5000
+NUMBER_OF_APPRENTICES = 50
 
-NUMBER_OF_MENTORS = 250
+NUMBER_OF_MENTORS = 2
 
 EVALUATIONS_PER_APPRENTICE = 5
 
@@ -646,123 +651,6 @@ def generate_subject_marks(ability):
 
     return records,average
 
-# ==========================================================
-# CREATE USERS
-# ==========================================================
-
-def create_users(session):
-    """
-    Creates:
-        - 1 Administrator
-        - 1 Supervisor
-        - NUM_MENTORS Mentor accounts
-        - NUM_APPRENTICES Apprentice accounts
-
-    Returns:
-        users (list)
-        supervisor (User)
-    """
-
-    print("Creating users...")
-
-    users = []
-
-    # ------------------------------------------------------
-    # Administrator
-    # ------------------------------------------------------
-
-    admin = User(
-        username="admin",
-        email="admin@dentacademy.co.za",
-        password_hash=hash_password("Admin@123"),
-        full_name="System Administrator",
-        role="Admin",
-        is_active=True,
-    )
-
-    session.add(admin)
-    users.append(admin)
-
-    # ------------------------------------------------------
-    # Supervisor
-    # ------------------------------------------------------
-
-    supervisor = User(
-        username="supervisor",
-        email="supervisor@dentacademy.co.za",
-        password_hash=hash_password("Supervisor@123"),
-        full_name="Main Supervisor",
-        role="Supervisor",
-        is_active=True,
-    )
-
-    session.add(supervisor)
-    users.append(supervisor)
-
-    # ------------------------------------------------------
-    # Mentor Accounts
-    # ------------------------------------------------------
-
-    for i in range(1, NUMBER_OF_MENTORS + 1):
-
-        first = random.choice(FIRST_NAMES)
-        surname = random.choice(LAST_NAMES)
-
-        mentor = User(
-
-            username=f"mentor{i:03}",
-
-            email=f"mentor{i:03}@dentacademy.co.za",
-
-            password_hash=hash_password("Mentor@123"),
-
-            full_name=f"{first} {surname}",
-
-            role="Mentor",
-
-            is_active=True,
-        )
-
-        session.add(mentor)
-        users.append(mentor)
-
-    # ------------------------------------------------------
-    # Apprentice Accounts
-    # ------------------------------------------------------
-
-    for i in range(1, NUMBER_OF_APPRENTICES + 1):
-
-        first = random.choice(FIRST_NAMES)
-        surname = random.choice(LAST_NAMES)
-
-        apprentice = User(
-
-            username=f"apprentice{i:05}",
-
-            email=f"apprentice{i:05}@dentacademy.co.za",
-
-            password_hash=hash_password("Password@123"),
-
-            full_name=f"{first} {surname}",
-
-            role="Apprentice",
-
-            is_active=True,
-        )
-
-        session.add(apprentice)
-        users.append(apprentice)
-
-        # Commit every 500 records for better performance
-        if i % 500 == 0:
-            session.flush()
-            print(f"  Created {i:,} apprentice users...")
-
-    session.commit()
-
-    print(f"✓ Created {len(users):,} users.")
-
-    return users, supervisor
 # ----------------------------------------------------------------------
 # APPRENTICE PROFILE
 # ----------------------------------------------------------------------
@@ -800,7 +688,7 @@ def generate_profile():
 
 # ----------------------------------------------------------------------
 # SCORE CALCULATOR
-# -------------------------------------------Su---------------------------
+# ----------------------------------------------------------------------
 
 def score_from_profile(value):
 
@@ -915,6 +803,7 @@ def commit_batch(session,count,size=500):
         session.commit()
 
         print(f"Committed {count:,} records...")
+
 # ======================================================================
 # ADMINISTRATOR
 # ======================================================================
@@ -926,7 +815,7 @@ def create_admin(session):
         password_hash=hash_password(ADMIN_PASSWORD),
         full_name="System Administrator",
         email="admin@dentacademy.co.za",
-        role="Administrator",
+        role="Admin",
         is_active=True
     )
 
@@ -973,9 +862,13 @@ def create_mentors(session):
 
     print(f"\nCreating {NUMBER_OF_MENTORS} mentors...")
 
+    mentor_names = []
+
     for i in range(1, NUMBER_OF_MENTORS + 1):
 
         first, last = generate_name()
+
+        mentor_names.append((first, last))
 
         username = generate_username(first, last, i)
 
@@ -1007,24 +900,24 @@ def create_mentors(session):
 
     print("✓ Mentor user accounts created")
 
-    for index, user in enumerate(mentor_users, start=1):
-        # Split the full name from the User record
-     first_name, surname = user.full_name.split(" ", 1)
+    for index, (user, (first, last)) in enumerate(zip(mentor_users, mentor_names), start=1):
 
-     mentor = Mentor(
-        user_id=user.user_id,
-        name=first_name,
-        surname=surname,
-        contact_number=generate_phone_number(),
-        email=user.email,
-        specialisation=random.choice(SPECIALISATIONS))
+        mentor = Mentor(
+            user_id=user.user_id,
+            name=first,
+            surname=last,
+            contact_number=generate_phone_number(),
+            email=user.email,
+            specialisation=random.choice(SPECIALISATIONS)
+        )
 
-     session.add(mentor)
+        session.add(mentor)
 
-     mentors.append(mentor)
+        mentors.append(mentor)
 
-     if index % 250 == 0:
-        session.flush()
+        if index % 250 == 0:
+
+            session.flush()
 
     session.flush()
 
@@ -1045,8 +938,6 @@ def create_apprentices(session, mentors):
     apprentices = []
     apprentice_users = []
     apprentice_profiles = {}
-
-    mentor_cycle = 0
 
     for i in range(1, NUMBER_OF_APPRENTICES + 1):
 
@@ -1153,7 +1044,6 @@ def create_apprentices(session, mentors):
             apprentice.apprentice_id
         ] = profile
 
-  
         # ----------------------------------------------------------
         # Batch Commit
         # ----------------------------------------------------------
@@ -2158,7 +2048,7 @@ def create_audit_logs(
     # REPORT GENERATION
     # -------------------------------------------------------------
 
-    for _ in range(250):
+    for _ in range(25):
 
         session.add(
 
@@ -2196,7 +2086,7 @@ def create_audit_logs(
     # FAILED LOGIN ATTEMPTS
     # -------------------------------------------------------------
 
-    for _ in range(150):
+    for _ in range(15):
 
         random_user = random.choice(users)
 
@@ -2233,7 +2123,7 @@ def create_audit_logs(
     print("✓ Failed login logs created")
 
     print(f"\n✓ {log_counter:,} audit log records created.")
-    
+
 # =====================================================================
 # PART 3F - MAIN SEED FUNCTION
 # =====================================================================
@@ -2254,7 +2144,7 @@ def seed():
 
         if "sqlite" in DATABASE_URL:
 
-            session.execute(next("PRAGMA foreign_keys=OFF"))
+            session.execute(text("PRAGMA foreign_keys=OFF"))
 
         else:
 
@@ -2271,7 +2161,7 @@ def seed():
         session.query(Attendance).delete()
         session.query(Evaluation).delete()
         session.query(ModuleProgress).delete()
-       # session.query(MentorAssignment).delete()
+        session.query(MentorAssignment).delete()
         session.query(Education).delete()
         session.query(Apprentice).delete()
         session.query(Mentor).delete()
@@ -2295,14 +2185,16 @@ def seed():
             session.execute(text("SET FOREIGN_KEY_CHECKS=1"))
 
         # -------------------------------------------------------------
-        # PART 1
+        # PART 1 - Core accounts
         # -------------------------------------------------------------
 
         print("\n==============================")
         print("PART 1")
         print("==============================")
 
-        users, supervisor = create_users(session)
+        admin = create_admin(session)
+
+        supervisor = create_supervisor(session)
 
         mentors = create_mentors(session)
 
@@ -2319,17 +2211,11 @@ def seed():
         apprentices, apprentice_profiles = create_apprentices(session, mentors)
 
         create_education_records(
-         session,
-         apprentices,
-          apprentice_profiles,
-         mentors
-)
-
-     #   create_mentor_assignments(
-     #       session,
-       #     apprentices,
-      #      mentors
-      #  )
+            session,
+            apprentices,
+            apprentice_profiles,
+            mentors
+        )
 
         # -------------------------------------------------------------
         # PART 3
@@ -2389,7 +2275,7 @@ def seed():
         print(f"Mentors:             {session.query(Mentor).count():,}")
         print(f"Apprentices:         {session.query(Apprentice).count():,}")
         print(f"Education:           {session.query(Education).count():,}")
-      #  print(f"Assignments:         {session.query(MentorAssignment).count():,}")
+        print(f"Assignments:         {session.query(MentorAssignment).count():,}")
         print(f"Modules:             {session.query(Module).count():,}")
         print(f"Attendance:          {session.query(Attendance).count():,}")
         print(f"Module Progress:     {session.query(ModuleProgress).count():,}")

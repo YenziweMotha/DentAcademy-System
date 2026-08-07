@@ -105,6 +105,20 @@ CREATE TABLE mentor_assignments (
     FOREIGN KEY (apprentice_id) REFERENCES apprentices(apprentice_id)
 );
 
+CREATE TABLE attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY,
+    apprentice_id INT NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    days_expected INT NOT NULL,
+    days_present INT NOT NULL,
+    attendance_rate DECIMAL(5,2) NOT NULL,
+    recorded_by INT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (apprentice_id) REFERENCES apprentices(apprentice_id) ON DELETE RESTRICT,
+    FOREIGN KEY (recorded_by) REFERENCES users(user_id) ON DELETE RESTRICT
+);
+
 CREATE TABLE ai_predictions (
     prediction_id INT AUTO_INCREMENT PRIMARY KEY,
     apprentice_id INT NOT NULL,
