@@ -37,3 +37,20 @@ npm run dev
 
 ## System Requirements Implemented
 All functional and non-functional requirements (FR-01 to FR-36, SR-01 to SR-08) including RBAC, JWT Auth, AI prediction, PDF Reports, and strict MySQL triggers have been implemented.
+
+## Login details 
+
+### Admin 
+
+username : Admin
+Password : Admin@1234
+
+### SUPERVISOR 
+
+username : Supervisor
+Password : Super@1234
+
+### SUPERVISOR 
+
+username : Supervisor
+Password : Super@1234
