@@ -2254,6 +2254,44 @@ def seed():
             supervisor
         )
 
+        # -------------------------------------------------------------
+        # Seed Notifications (so dashboards have data)
+        # -------------------------------------------------------------
+        try:
+            from sqlalchemy import text as sql_text
+
+            supervisors = session.query(User).filter(User.role == 'Supervisor').all()
+            sample_apps = apprentices[:10]
+
+            for app in sample_apps:
+                if app.user_id:
+                    session.execute(sql_text(
+                        """
+                        INSERT INTO notifications (user_id, message, type, is_read, created_at, link)
+                        VALUES (:user_id, :message, 'warning', false, NOW(), :link)
+                        """
+                    ), {
+                        'user_id': app.user_id,
+                        'message': f'Low attendance detected for {app.first_name} {app.surname} (seed).',
+                        'link': f'/apprentices/{app.apprentice_id}'
+                    })
+
+                for sup in supervisors:
+                    session.execute(sql_text(
+                        """
+                        INSERT INTO notifications (user_id, message, type, is_read, created_at, link)
+                        VALUES (:user_id, :message, 'warning', false, NOW(), :link)
+                        """
+                    ), {
+                        'user_id': sup.user_id,
+                        'message': f'High dropout risk: {app.first_name} {app.surname} (seed).',
+                        'link': f'/predictions?apprentice_id={app.apprentice_id}'
+                    })
+
+            session.commit()
+        except Exception:
+            session.rollback()
+
         create_audit_logs(
             session,
             apprentices,

@@ -9,6 +9,7 @@ from models.user import User
 from schemas.prediction import AttendanceCreate, AttendanceOut
 from middleware.auth_middleware import get_current_user, require_staff
 from middleware.audit_middleware import log_audit_action, get_client_ip
+from services.notification_service import create_notification
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
@@ -60,6 +61,18 @@ def record_attendance(
     db.add(att)
     db.commit()
     db.refresh(att)
+
+    # ✅ Trigger notification for low attendance
+    try:
+        if rate < 75:
+            create_notification(
+                user_id=app.user_id,
+                message=f"Low attendance detected ({rate}%). Please improve.",
+                type="warning",
+                link=f"/apprentices/{att_in.apprentice_id}"
+            )
+    except Exception:
+        pass
     log_audit_action(db, "CREATE", current_user.user_id, "Attendance",
                      att.attendance_id, ip_address=get_client_ip(request))
     return att

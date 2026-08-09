@@ -39,43 +39,54 @@ export default function Login() {
   if (authLoading) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-primary-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-4xl font-extrabold text-slate-900 tracking-tight">
-          DentAcademy
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Management Portal &bull; Apprenticeship Program
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold text-slate-900">DentAcademy</h1>
+          <p className="text-sm text-slate-500 mt-1">Apprenticeship Management Portal</p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white shadow-lg rounded-xl p-6 border">
           {error && <AlertBanner type="error" message={error} />}
-          
-          <form className="space-y-6" onSubmit={handleSubmit}>
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <Input
               label="Username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
               required
             />
+
             <Input
               label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
               required
             />
-            
-            <div className="pt-2">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in'}
-              </Button>
+
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" className="rounded border-gray-300" />
+                Remember me
+              </label>
+              <span className="text-primary-600 cursor-pointer hover:underline">
+                Forgot password?
+              </span>
             </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign in'}
+            </Button>
           </form>
         </div>
+
+        <p className="text-center text-xs text-slate-400 mt-4">
+          © {new Date().getFullYear()} DentAcademy
+        </p>
       </div>
     </div>
   );

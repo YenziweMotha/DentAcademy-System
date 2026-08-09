@@ -4,6 +4,8 @@ from models.module import ModuleProgress, Module
 from models.evaluation import Evaluation
 from models.prediction import AIPrediction
 from ai.model import PredictionModel
+from services.notification_service import create_notification
+from models.user import User
 
 def generate_prediction(apprentice_id: int, db: Session):
     apprentice = db.query(Apprentice).filter(Apprentice.apprentice_id == apprentice_id).first()
@@ -68,6 +70,31 @@ def generate_prediction(apprentice_id: int, db: Session):
             feature_snapshot=features,
             missing_features=[]
         )
+
+        # ✅ Prediction alerts (high dropout risk)
+        try:
+            # assuming dropout_risk is percentage (0-100)
+            if result.get('dropout_risk', 0) >= 70:
+                # notify apprentice (if linked to user)
+                if apprentice.user_id:
+                    create_notification(
+                        user_id=apprentice.user_id,
+                        message="High dropout risk detected. Please consult your supervisor.",
+                        type="warning",
+                        link=f"/predictions?apprentice_id={apprentice_id}",
+                    )
+
+                # notify all supervisors
+                supervisors = db.query(User).filter(User.role == "Supervisor").all()
+                for sup in supervisors:
+                    create_notification(
+                        user_id=sup.user_id,
+                        message=f"High dropout risk: {apprentice.first_name} {apprentice.surname}",
+                        type="warning",
+                        link=f"/predictions?apprentice_id={apprentice_id}",
+                    )
+        except Exception:
+            pass
         
     db.add(pred)
     db.commit()

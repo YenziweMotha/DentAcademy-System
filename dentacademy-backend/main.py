@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 import os
 from routers import auth_router, users_router, apprentices_router, modules_router, evaluations_router, mentors_router, predictions_router, reports_router, dashboard_router
+from routers.notifications import router as notifications_router
+from routers.analytics import router as analytics_router
 from middleware.auth_middleware import SecurityHeadersMiddleware
 
 # Since we use a raw SQL file for the schema, we typically wouldn't use create_all, but it is safe.
@@ -31,3 +33,5 @@ app.include_router(mentors_router)
 app.include_router(predictions_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
+app.include_router(notifications_router)
+app.include_router(analytics_router)

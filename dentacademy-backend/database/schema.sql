@@ -153,6 +153,18 @@ CREATE TABLE ai_predictions (
     FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE RESTRICT
 );
 
+-- Notifications table (for alerts & in-app messages)
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'warning',
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    link VARCHAR(255) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 -- INSERT-ONLY table (see triggers.sql: UPDATE/DELETE are blocked at the DB level)
 CREATE TABLE audit_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
