@@ -13,7 +13,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(200), nullable=False)
     role = Column(
-        Enum("Admin", "Supervisor", "Mentor", "Apprentice", name="user_roles"),
+        Enum("Administrator", "Supervisor", "Mentor", "Apprentice", name="user_roles"),
         nullable=False,
     )
     is_active = Column(Boolean, default=True)

@@ -5,7 +5,7 @@ export default function MentorDashboard() {
   const [data, setData] = useState({ assigned_apprentices: 0 });
 
   useEffect(() => {
-    api.get('/dashboard/mentor').then(res => setData(res.data)).catch(console.error);
+    api.get('api/dashboard/mentor').then(res => setData(res.data)).catch(console.error);
   }, []);
 
   return (

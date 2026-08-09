@@ -23,7 +23,7 @@ uvicorn main:app --reload --port 8000
 
 - API docs: http://localhost:8000/docs
 - Default login credentials:
-  - Administrator: admin / Admin@1234
-  - Supervisor: supervisor / Super@1234
-  - Mentor: mentor1 / Mentor@1234
-  - Apprentice: apprentice1 / Apprent@1234
+  - Administrator: admin / Admin@123
+  - Supervisor: supervisor / Super@123
+  - Mentor: mentor1 / Mentor@123
+  - Apprentice: apprentice1 / Apprent@123

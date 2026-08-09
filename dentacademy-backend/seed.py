@@ -83,13 +83,13 @@ ATTENDANCE_PERIODS = 6
 # Default Passwords
 # ------------------------------------------------------------------
 
-ADMIN_PASSWORD = "Admin@1234"
+ADMIN_PASSWORD = "Admin@123"
 
-SUPERVISOR_PASSWORD = "Super@1234"
+SUPERVISOR_PASSWORD = "Super@123"
 
-MENTOR_PASSWORD = "Mentor@1234"
+MENTOR_PASSWORD = "Mentor@123"
 
-APPRENTICE_PASSWORD = "Apprent@1234"
+APPRENTICE_PASSWORD = "Apprent@123"
 
 # ------------------------------------------------------------------
 # South African First Names
@@ -676,7 +676,7 @@ def create_users(session):
         email="admin@dentacademy.co.za",
         password_hash=hash_password("Admin@123"),
         full_name="System Administrator",
-        role="Admin",
+        role="Administrator",
         is_active=True,
     )
 

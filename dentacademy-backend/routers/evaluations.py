@@ -9,7 +9,9 @@ from models.apprentice import Apprentice
 from models.user import User
 from schemas.evaluation import EvaluationCreate, EvaluationOut
 from middleware.auth_middleware import (
-    get_current_user, require_admin_or_supervisor, require_supervisor
+    get_current_user,
+    require_admin_or_supervisor,
+    require_supervisor,
 )
 from middleware.audit_middleware import log_audit_action, get_client_ip
 
@@ -27,7 +29,8 @@ def _get_mentor_for_user(user: User, db: Session) -> Mentor:
 def list_evaluations(
     apprentice_id: Optional[int] = Query(None),
     approved: Optional[bool] = Query(None),
-    skip: int = 0, limit: int = 50,
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -54,6 +57,19 @@ def list_evaluations(
     return q.order_by(Evaluation.submitted_at.desc()).offset(skip).limit(limit).all()
 
 
+@router.get("/pending", response_model=List[EvaluationOut])
+def get_pending_evaluations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_supervisor),
+):
+    return (
+        db.query(Evaluation)
+        .filter(Evaluation.approved == False)
+        .order_by(Evaluation.submitted_at.desc())
+        .all()
+    )
+
+
 @router.post("", response_model=EvaluationOut, status_code=201)
 def submit_evaluation(
     request: Request,
@@ -61,17 +77,20 @@ def submit_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["Mentor", "Admin"]:
-        raise HTTPException(403, "Only Mentors or Admins can submit evaluations")
+    if current_user.role not in ["Mentor", "Administrator"]:
+        raise HTTPException(403, "Only Mentors or Administrators can submit evaluations")
 
     app = db.query(Apprentice).filter(
         Apprentice.apprentice_id == eval_in.apprentice_id,
-        Apprentice.is_synthetic == False,
     ).first()
     if not app:
         raise HTTPException(404, "Apprentice not found")
 
-    mentor = _get_mentor_for_user(current_user, db) if current_user.role == "Mentor" else None
+    mentor = (
+        _get_mentor_for_user(current_user, db)
+        if current_user.role == "Mentor"
+        else None
+    )
     if mentor:
         assignment = db.query(MentorAssignment).filter(
             MentorAssignment.mentor_id == mentor.mentor_id,
@@ -79,25 +98,27 @@ def submit_evaluation(
             MentorAssignment.is_current == True,
         ).first()
         if not assignment:
-            raise HTTPException(403, "You are not currently assigned to this apprentice")
+            raise HTTPException(
+                403, "You are not currently assigned to this apprentice"
+            )
 
-    # Compute overall_score as arithmetic mean
     scores = [
-        eval_in.discipline, eval_in.commitment, eval_in.willingness,
-        eval_in.teamwork, eval_in.time_management, eval_in.professional_conduct
+        eval_in.discipline,
+        eval_in.commitment,
+        eval_in.willingness,
+        eval_in.teamwork,
+        eval_in.time_management,
+        eval_in.professional_conduct,
     ]
     overall = round(sum(scores) / 6.0, 2)
 
-    # Get mentor_id (FK to mentors table)
     if mentor:
         mentor_id = mentor.mentor_id
     else:
-        # Admin submitting — find their mentor profile or first mentor
         admin_mentor = db.query(Mentor).filter(
             Mentor.user_id == current_user.user_id
         ).first()
         if not admin_mentor:
-            # Fallback: use any current mentor for this apprentice
             assignment = db.query(MentorAssignment).filter(
                 MentorAssignment.apprentice_id == eval_in.apprentice_id,
                 MentorAssignment.is_current == True,
@@ -123,8 +144,14 @@ def submit_evaluation(
     db.add(new_eval)
     db.commit()
     db.refresh(new_eval)
-    log_audit_action(db, "CREATE", current_user.user_id, "Evaluation",
-                     new_eval.evaluation_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "Evaluation",
+        new_eval.evaluation_id,
+        ip_address=get_client_ip(request),
+    )
     return new_eval
 
 
@@ -133,11 +160,9 @@ def get_overdue_apprentices(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_supervisor),
 ):
-    """List active apprentices with no evaluation in the past 30 days."""
     cutoff = datetime.utcnow() - timedelta(days=30)
     active_apprentices = db.query(Apprentice).filter(
         Apprentice.status == "ACTIVE",
-        Apprentice.is_synthetic == False,
     ).all()
     overdue = []
     for app in active_apprentices:
@@ -148,15 +173,18 @@ def get_overdue_apprentices(
             .first()
         )
         if not latest or latest.submitted_at < cutoff:
-            overdue.append({
-                "apprentice_id": app.apprentice_id,
-                "name": f"{app.first_name} {app.surname}",
-                "last_evaluation": latest.submitted_at if latest else None,
-                "days_overdue": (
-                    (datetime.utcnow() - latest.submitted_at).days
-                    if latest else None
-                ),
-            })
+            overdue.append(
+                {
+                    "apprentice_id": app.apprentice_id,
+                    "name": f"{app.first_name} {app.surname}",
+                    "last_evaluation": latest.submitted_at if latest else None,
+                    "days_overdue": (
+                        (datetime.utcnow() - latest.submitted_at).days
+                        if latest
+                        else None
+                    ),
+                }
+            )
     return overdue
 
 
@@ -178,13 +206,18 @@ def get_evaluation(
     return ev
 
 
-@router.patch("/{evaluation_id}/approve", response_model=EvaluationOut)
+@router.put("/{evaluation_id}/approve", response_model=EvaluationOut)
 def approve_evaluation(
     evaluation_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_supervisor),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
+    if current_user.role == "Mentor":
+        raise HTTPException(
+            status_code=403,
+            detail="Mentors cannot approve evaluations",
+        )
     ev = db.query(Evaluation).filter(Evaluation.evaluation_id == evaluation_id).first()
     if not ev:
         raise HTTPException(404, "Evaluation not found")
@@ -195,8 +228,14 @@ def approve_evaluation(
     ev.approved_at = datetime.utcnow()
     db.commit()
     db.refresh(ev)
-    log_audit_action(db, "EVALUATION_APPROVED", current_user.user_id, "Evaluation",
-                     ev.evaluation_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "EVALUATION_APPROVED",
+        current_user.user_id,
+        "Evaluation",
+        ev.evaluation_id,
+        ip_address=get_client_ip(request),
+    )
     return ev
 
 

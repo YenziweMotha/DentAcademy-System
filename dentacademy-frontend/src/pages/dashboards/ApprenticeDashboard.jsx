@@ -5,7 +5,7 @@ export default function ApprenticeDashboard() {
   const [data, setData] = useState({ completed_modules: 0 });
 
   useEffect(() => {
-    api.get('/dashboard/apprentice').then(res => setData(res.data)).catch(console.error);
+    api.get('api/dashboard/apprentice').then(res => setData(res.data)).catch(console.error);
   }, []);
 
   return (

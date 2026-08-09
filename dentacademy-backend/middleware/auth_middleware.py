@@ -74,10 +74,10 @@ def require_role(roles: list):
     return role_checker
 
 
-require_admin = require_role(["Admin"])
+require_admin = require_role(["Administrator"])
 require_supervisor = require_role(["Supervisor"])
 require_mentor = require_role(["Mentor"])
-require_admin_or_supervisor = require_role(["Admin", "Supervisor"])
-require_mentor_or_admin = require_role(["Admin", "Mentor"])
+require_admin_or_supervisor = require_role(["Administrator", "Supervisor"])
+require_mentor_or_admin = require_role(["Administrator", "Mentor"])
 require_mentor_or_supervisor = require_role(["Supervisor", "Mentor"])
-require_staff = require_role(["Admin", "Supervisor", "Mentor"])
+require_staff = require_role(["Administrator", "Supervisor", "Mentor"])

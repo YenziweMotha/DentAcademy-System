@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks, Response
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from database import get_db
@@ -23,11 +23,10 @@ class LoginData(BaseModel):
 
 @router.options("/login")
 async def login_options():
-    print("OPTIONS RECEIVED")
     return {"ok": True}
 
 @router.post("/login", response_model=Token)
-def login(request: Request, form_data: LoginData, db: Session = Depends(get_db)):
+def login(response: Response, request: Request, form_data: LoginData, db: Session = Depends(get_db)):
     ip = get_client_ip(request)
     user = db.query(User).filter(User.username == form_data.username).first()
 
@@ -35,12 +34,10 @@ def login(request: Request, form_data: LoginData, db: Session = Depends(get_db))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Incorrect username or password")
 
-    # Check account lock
     if user.locked_until and user.locked_until > datetime.utcnow():
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Account locked until {user.locked_until.strftime('%Y-%m-%d %H:%M UTC')}. "
-                   "Contact an administrator."
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account locked for 30 minutes."
         )
 
     if not verify_password(form_data.password, user.password_hash):
@@ -51,8 +48,8 @@ def login(request: Request, form_data: LoginData, db: Session = Depends(get_db))
             log_audit_action(db, "ACCOUNT_LOCKED", user.user_id, "User", user.user_id,
                              ip_address=ip)
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account locked due to 5 failed attempts. Contact an administrator."
+                status_code=status.HTTP_423_LOCKED,
+                detail="Account locked for 30 minutes."
             )
         db.commit()
         log_audit_action(db, "LOGIN_FAILED", user.user_id, "User", user.user_id,
@@ -60,7 +57,6 @@ def login(request: Request, form_data: LoginData, db: Session = Depends(get_db))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Incorrect username or password")
 
-    # Successful login
     user.failed_attempts = 0
     user.locked_until = None
     user.last_login = datetime.utcnow()
@@ -70,6 +66,15 @@ def login(request: Request, form_data: LoginData, db: Session = Depends(get_db))
         data={"user_id": user.user_id, "role": user.role},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+
+    response.set_cookie(
+        "access_token",
+        token,
+        httponly=True,
+        samesite="strict",
+        max_age=3600
+    )
+
     log_audit_action(db, "LOGIN", user.user_id, "User", user.user_id, ip_address=ip)
 
     return Token(
@@ -78,16 +83,19 @@ def login(request: Request, form_data: LoginData, db: Session = Depends(get_db))
         role=user.role,
         user_id=user.user_id,
         full_name=user.full_name,
+        email=user.email,
     )
 
 
 @router.post("/logout", status_code=200)
 def logout(
+    response: Response,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     ip = get_client_ip(request)
+    response.delete_cookie("access_token")
     log_audit_action(db, "LOGOUT", current_user.user_id, "User", current_user.user_id,
                      ip_address=ip)
     return {"message": "Logged out successfully. Discard your token."}
@@ -112,22 +120,16 @@ def password_reset_request(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """
-    Issue a single-use, 30-min password reset token.
-    Always returns 200 to prevent user enumeration.
-    """
     user = db.query(User).filter(User.email == body.email).first()
     if user:
         token = secrets.token_urlsafe(32)
-        user.reset_token = get_password_hash(token)  # store hashed
+        user.reset_token = get_password_hash(token)
         user.reset_token_expiry = datetime.utcnow() + timedelta(
             minutes=int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
         )
         db.commit()
         log_audit_action(db, "PASSWORD_RESET_REQUEST", user.user_id, "User",
                          user.user_id, ip_address=get_client_ip(request))
-        # In production: send email with token here
-        # For now: return token in response (dev-only)
         if os.getenv("ENVIRONMENT", "production") == "development":
             return {"message": "Reset token issued", "dev_token": token}
     return {"message": "If that email is registered, a reset link has been sent."}
@@ -139,7 +141,6 @@ def password_reset_confirm(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Consume the single-use reset token and set a new password."""
     raise HTTPException(
         status_code=400,
         detail="Token verification requires email context. Use /reset-confirm-email endpoint."
@@ -159,7 +160,6 @@ def password_reset_confirm_with_email(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     if user.reset_token_expiry < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Reset token has expired")
-    # Verify token
     if not verify_password(token, user.reset_token):
         raise HTTPException(status_code=400, detail="Invalid reset token")
 

@@ -2,20 +2,36 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
+from pydantic import BaseModel
 from database import get_db
 from models.mentor import Mentor, MentorAssignment
 from models.user import User
 from models.apprentice import Apprentice
-from schemas.mentor import MentorCreate, MentorUpdate, MentorOut, AssignmentCreate, AssignmentOut
-from middleware.auth_middleware import get_current_user, require_admin, require_admin_or_supervisor
+from schemas.mentor import (
+    MentorCreate,
+    MentorUpdate,
+    MentorOut,
+    AssignmentCreate,
+    AssignmentOut,
+)
+from middleware.auth_middleware import (
+    get_current_user,
+    require_admin,
+    require_admin_or_supervisor,
+)
 from middleware.audit_middleware import log_audit_action, get_client_ip
 
 router = APIRouter(prefix="/api/mentors", tags=["mentors"])
 
 
+class AssignApprenticeBody(BaseModel):
+    apprentice_id: int
+
+
 @router.get("", response_model=List[MentorOut])
 def list_mentors(
-    skip: int = 0, limit: int = 50,
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -29,7 +45,6 @@ def create_mentor(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    # Ensure the user_id exists and is a Mentor role
     user = db.query(User).filter(User.user_id == mentor_in.user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -41,8 +56,14 @@ def create_mentor(
     db.add(mentor)
     db.commit()
     db.refresh(mentor)
-    log_audit_action(db, "CREATE", current_user.user_id, "Mentor",
-                     mentor.mentor_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "Mentor",
+        mentor.mentor_id,
+        ip_address=get_client_ip(request),
+    )
     return mentor
 
 
@@ -73,12 +94,16 @@ def update_mentor(
         setattr(mentor, k, v)
     db.commit()
     db.refresh(mentor)
-    log_audit_action(db, "UPDATE", current_user.user_id, "Mentor",
-                     mentor.mentor_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "Mentor",
+        mentor.mentor_id,
+        ip_address=get_client_ip(request),
+    )
     return mentor
 
-
-# ── Assignments ────────────────────────────────────────────────────────────────
 
 @router.get("/{mentor_id}/assignments", response_model=List[AssignmentOut])
 def get_mentor_assignments(
@@ -94,6 +119,50 @@ def get_mentor_assignments(
     if current_only:
         q = q.filter(MentorAssignment.is_current == True)
     return q.all()
+
+
+@router.post("/{mentor_id}/assign", response_model=AssignmentOut, status_code=201)
+def assign_apprentice_direct(
+    mentor_id: int,
+    request: Request,
+    body: AssignApprenticeBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    mentor = db.query(Mentor).filter(Mentor.mentor_id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(404, "Mentor not found")
+    app = db.query(Apprentice).filter(
+        Apprentice.apprentice_id == body.apprentice_id
+    ).first()
+    if not app:
+        raise HTTPException(404, "Apprentice not found")
+
+    existing = db.query(MentorAssignment).filter(
+        MentorAssignment.apprentice_id == body.apprentice_id,
+        MentorAssignment.is_current == True,
+    ).first()
+    if existing:
+        existing.is_current = False
+
+    new_assignment = MentorAssignment(
+        mentor_id=mentor_id,
+        apprentice_id=body.apprentice_id,
+        assigned_date=date.today(),
+        is_current=True,
+    )
+    db.add(new_assignment)
+    db.commit()
+    db.refresh(new_assignment)
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "MentorAssignment",
+        new_assignment.assignment_id,
+        ip_address=get_client_ip(request),
+    )
+    return new_assignment
 
 
 @router.post("/{mentor_id}/assignments", response_model=AssignmentOut, status_code=201)
@@ -113,7 +182,6 @@ def assign_apprentice(
     if not app:
         raise HTTPException(404, "Apprentice not found")
 
-    # Deactivate any current assignment for this apprentice (reassignment logic)
     existing = db.query(MentorAssignment).filter(
         MentorAssignment.apprentice_id == body.apprentice_id,
         MentorAssignment.is_current == True,
@@ -130,8 +198,14 @@ def assign_apprentice(
     db.add(new_assignment)
     db.commit()
     db.refresh(new_assignment)
-    log_audit_action(db, "CREATE", current_user.user_id, "MentorAssignment",
-                     new_assignment.assignment_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "MentorAssignment",
+        new_assignment.assignment_id,
+        ip_address=get_client_ip(request),
+    )
     return new_assignment
 
 
@@ -151,6 +225,12 @@ def remove_assignment(
         raise HTTPException(404, "Assignment not found")
     assignment.is_current = False
     db.commit()
-    log_audit_action(db, "UPDATE", current_user.user_id, "MentorAssignment",
-                     assignment_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "MentorAssignment",
+        assignment_id,
+        ip_address=get_client_ip(request),
+    )
     return {"message": "Assignment removed"}

@@ -6,21 +6,21 @@ export const getApprentices = async () => {
 };
 
 export const getApprentice = async (id) => {
-  const response = await api.get(`/apprentices/${id}`);
+  const response = await api.get(`api/apprentices/${id}`);
   return response.data;
 };
 
 export const createApprentice = async (data) => {
-  const response = await api.post('/apprentices', data);
+  const response = await api.post('api/apprentices', data);
   return response.data;
 };
 
 export const updateApprentice = async (id, data) => {
-  const response = await api.put(`/apprentices/${id}`, data);
+  const response = await api.put(`api/apprentices/${id}`, data);
   return response.data;
 };
 
 export const deactivateApprentice = async (id) => {
-  const response = await api.delete(`/apprentices/${id}`);
+  const response = await api.delete(`api/apprentices/${id}`);
   return response.data;
 };

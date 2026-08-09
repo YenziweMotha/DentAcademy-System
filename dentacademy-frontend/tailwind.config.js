@@ -7,32 +7,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-          950: '#082f49',
-        },
-        brand: {
-          light: '#6366f1', // Indigo
-          DEFAULT: '#4f46e5',
-          dark: '#4338ca',
-        },
-        accent: {
-          light: '#10b981', // Emerald
-          DEFAULT: '#059669',
-          dark: '#047857',
-        }
+        'dent-primary': '#1B6B2F',
+        'dent-green-dark': '#145224',
+        'dent-green-light': '#E8F5ED',
+        'dent-green-border': '#2A8A42',
+        'dent-sidebar': '#1A1A1A',
+        'dent-card-head': '#2D2D2D',
+        'dent-page-bg': '#F8F8F8',
+        'dent-text': '#4A4A4A',
+        'dent-label': '#9E9E9E',
+        'dent-error': '#B91C1C',
+        'dent-warning': '#B35C00',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },

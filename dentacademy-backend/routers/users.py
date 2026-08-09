@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.get("", response_model=List[UserOut])
 def list_users(
-    skip: int = 0, limit: int = 50,
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -28,9 +29,15 @@ def create_user(
     current_user: User = Depends(require_admin),
 ):
     if db.query(User).filter(User.username == user_in.username).first():
-        raise HTTPException(400, "Username already exists")
+        raise HTTPException(
+            status_code=409,
+            detail="Username already taken.",
+        )
     if db.query(User).filter(User.email == user_in.email).first():
-        raise HTTPException(400, "Email already registered")
+        raise HTTPException(
+            status_code=409,
+            detail="Email already registered.",
+        )
     user = User(
         username=user_in.username,
         email=user_in.email,
@@ -41,8 +48,14 @@ def create_user(
     db.add(user)
     db.commit()
     db.refresh(user)
-    log_audit_action(db, "CREATE", current_user.user_id, "User",
-                     user.user_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "User",
+        user.user_id,
+        ip_address=get_client_ip(request),
+    )
     return user
 
 
@@ -69,36 +82,34 @@ def update_user(
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+
+    update_data = user_in.model_dump(exclude_unset=True)
+
+    if "is_active" in update_data and update_data["is_active"] == False:
+        if user_id == current_user.user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You cannot deactivate your own account.",
+            )
+
     if user_in.email and user_in.email != user.email:
         if db.query(User).filter(User.email == user_in.email).first():
             raise HTTPException(400, "Email already in use")
-    for k, v in user_in.model_dump(exclude_unset=True).items():
+
+    for k, v in update_data.items():
         setattr(user, k, v)
+
     db.commit()
     db.refresh(user)
-    log_audit_action(db, "UPDATE", current_user.user_id, "User",
-                     user.user_id, ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "User",
+        user.user_id,
+        ip_address=get_client_ip(request),
+    )
     return user
-
-
-@router.patch("/{user_id}/deactivate", status_code=200)
-def deactivate_user(
-    user_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    if user_id == current_user.user_id:
-        raise HTTPException(400, "Cannot deactivate your own account")
-    user = db.query(User).filter(User.user_id == user_id).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    user.is_active = False
-    db.commit()
-    log_audit_action(db, "UPDATE", current_user.user_id, "User",
-                     user_id, new_value={"is_active": False},
-                     ip_address=get_client_ip(request))
-    return {"message": "User deactivated"}
 
 
 @router.patch("/{user_id}/unlock", status_code=200)
@@ -114,7 +125,13 @@ def unlock_user(
     user.locked_until = None
     user.failed_attempts = 0
     db.commit()
-    log_audit_action(db, "UPDATE", current_user.user_id, "User",
-                     user_id, new_value={"locked_until": None, "failed_attempts": 0},
-                     ip_address=get_client_ip(request))
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "User",
+        user_id,
+        new_value={"locked_until": None, "failed_attempts": 0},
+        ip_address=get_client_ip(request),
+    )
     return {"message": "User account unlocked"}

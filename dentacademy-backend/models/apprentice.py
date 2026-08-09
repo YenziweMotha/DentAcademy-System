@@ -5,6 +5,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
+from pydantic import BaseModel
 
 
 class Apprentice(Base):
