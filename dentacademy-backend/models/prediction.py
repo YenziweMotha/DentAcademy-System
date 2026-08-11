@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, Numeric, JSON, DateTime, ForeignKey, Boolean
+    Column, Integer, Numeric, JSON, DateTime, ForeignKey, Boolean, String
 )
 from sqlalchemy.orm import relationship
 from database import Base
@@ -16,6 +16,8 @@ class AIPrediction(Base):
     generated_by = Column(
         Integer, ForeignKey("users.user_id", ondelete="RESTRICT"), nullable=True
     )
+    # Model version that produced this prediction (historical comparison)
+    model_version = Column(String(50), nullable=True)
     # Prediction scores (0–100)
     completion_likelihood = Column(Numeric(5, 2), nullable=True)
     dropout_risk = Column(Numeric(5, 2), nullable=True)

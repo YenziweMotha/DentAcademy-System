@@ -20,7 +20,7 @@ The exact vector is persisted into feature_snapshot_json for retrospective compa
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from models.apprentice import Apprentice, Education
+from models.education import Education
 from models.module import Module, ModuleProgress
 from models.evaluation import Evaluation
 from models.attendance import Attendance
@@ -67,8 +67,8 @@ def build_feature_vector(
 
     # ── Academic average ────────────────────────────────────────────────────
     edu = db.query(Education).filter(Education.apprentice_id == apprentice_id).first()
-    if edu and edu.subjects_json:
-        marks = [s["mark"] for s in edu.subjects_json if "mark" in s]
+    if edu and edu.subjects:
+        marks = [float(s.mark) for s in edu.subjects]
         academic_avg = sum(marks) / len(marks) if marks else 0.0
     elif edu and edu.average_mark is not None:
         academic_avg = float(edu.average_mark)

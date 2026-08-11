@@ -8,3 +8,4 @@ from .mentors import router as mentors_router
 from .predictions import router as predictions_router
 from .reports import router as reports_router
 from .dashboard import router as dashboard_router
+from .config import router as config_router

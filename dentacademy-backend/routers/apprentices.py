@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFi
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from uuid import uuid4
 from database import get_db
-from models.apprentice import Apprentice, Education
+from models.apprentice import Apprentice
+from models.education import Education, EducationSubject
 from models.mentor import MentorAssignment, Mentor
 from models.user import User
 from models.module import ModuleProgress, Module
@@ -24,7 +26,8 @@ from middleware.auth_middleware import (
     require_admin_or_supervisor,
 )
 from middleware.audit_middleware import log_audit_action, get_client_ip
-import shutil, os
+from utils.security import mask_id_number
+import os
 from datetime import datetime
 
 router = APIRouter(prefix="/api/apprentices", tags=["apprentices"])
@@ -33,13 +36,31 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/photos")
 MAX_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "2"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+JPEG_MAGIC = b"\xff\xd8\xff"
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def _completion_pct(app: Apprentice, db: Session) -> float:
+    total = (
+        db.query(Module)
+        .filter(Module.is_active == True)
+        .count()
+    )
+    if total == 0:
+        return 0.0
+    completed = db.query(ModuleProgress).filter(
+        ModuleProgress.apprentice_id == app.apprentice_id,
+        ModuleProgress.status == "Completed",
+    ).count()
+    return round((completed / total) * 100, 2)
+
 
 def _enrich_apprentice_out(app: Apprentice, db: Session) -> dict:
     data = {
         "apprentice_id": app.apprentice_id,
         "surname": app.surname,
         "first_name": app.first_name,
-        "id_number": app.id_number,
+"id_number": mask_id_number(app.id_number),
         "gender": app.gender,
         "contact_number": app.contact_number,
         "city": app.city,
@@ -52,17 +73,7 @@ def _enrich_apprentice_out(app: Apprentice, db: Session) -> dict:
     if app.education:
         data["qualification_type"] = app.education.qualification_type
         data["institution"] = app.education.institution_name
-
-    total = db.query(Module).count()
-    if total > 0:
-        completed = db.query(ModuleProgress).filter(
-            ModuleProgress.apprentice_id == app.apprentice_id,
-            ModuleProgress.status == "Completed",
-        ).count()
-        data["completion_pct"] = round((completed / total) * 100, 2)
-    else:
-        data["completion_pct"] = 0.0
-
+    data["completion_pct"] = _completion_pct(app, db)
     return data
 
 
@@ -72,7 +83,7 @@ def _enrich_apprentice_detail(app: Apprentice, db: Session) -> dict:
     data["address_line1"] = app.address_line1
     data["user_id"] = app.user_id
 
-    total_modules = db.query(Module).count()
+    total_modules = db.query(Module).filter(Module.is_active == True).count()
     completed_modules = db.query(ModuleProgress).filter(
         ModuleProgress.apprentice_id == app.apprentice_id,
         ModuleProgress.status == "Completed",
@@ -86,16 +97,15 @@ def _enrich_apprentice_detail(app: Apprentice, db: Session) -> dict:
         .order_by(Evaluation.submitted_at.desc())
         .first()
     )
-    if latest_eval:
-        data["latest_evaluation"] = {
+    data["latest_evaluation"] = (
+        {
             "overall_score": float(latest_eval.overall_score),
             "submitted_at": latest_eval.submitted_at,
         }
-    else:
-        data["latest_evaluation"] = None
+        if latest_eval else None
+    )
 
     return data
-
 
 
 def _check_mentor_access(current_user: User, apprentice_id: int, db: Session):
@@ -111,68 +121,50 @@ def _check_mentor_access(current_user: User, apprentice_id: int, db: Session):
         raise HTTPException(403, "You are not assigned to this apprentice")
 
 
+def _sync_subjects(edu: Education, subjects: List[dict]):
+    edu.subjects = [
+        EducationSubject(subject_name=s["subject"], mark=s["mark"])
+        for s in subjects
+    ]
+    edu.average_mark = (
+        round(sum(s["mark"] for s in subjects) / len(subjects), 2)
+        if subjects else None
+    )
+
+
 @router.get("", response_model=ApprenticePaginatedOut)
 def list_apprentices(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query("apprentice_id"),
+    order: str = Query("asc"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     List apprentices according to the logged-in user's role.
 
-    Administrator:
-        Can see all apprentices.
-
-    Supervisor:
-        Can see apprentices assigned to mentors belonging
-        to that supervisor.
-
-    Mentor:
-        Can see only apprentices currently assigned to them.
-
-    Apprentice:
-        Can see only their own record.
+    Administrator: all apprentices.
+    Supervisor: programme-wide apprentice list.
+    Mentor: only apprentices currently assigned to them.
+    Apprentice: only their own record.
     """
-
-    # =========================================================
-    # BASE QUERY
-    # =========================================================
-
     q = db.query(Apprentice)
 
-    # =========================================================
-    # ADMINISTRATOR
-    # =========================================================
-
     if current_user.role == "Administrator":
-        # Administrator has unrestricted access.
         pass
-
-    # =========================================================
-    # MENTOR
-    # =========================================================
-
+    elif current_user.role == "Supervisor":
+        pass
     elif current_user.role == "Mentor":
-
         mentor = (
             db.query(Mentor)
-            .filter(
-                Mentor.user_id == current_user.user_id
-            )
+            .filter(Mentor.user_id == current_user.user_id)
             .first()
         )
-
         if not mentor:
-            raise HTTPException(
-                status_code=403,
-                detail="Mentor profile not found."
-            )
-
-        # Subquery containing apprentices currently assigned
-        # to this mentor.
+            raise HTTPException(403, "Mentor profile not found")
         assigned_apprentice_ids = (
             db.query(MentorAssignment.apprentice_id)
             .filter(
@@ -181,135 +173,85 @@ def list_apprentices(
             )
             .subquery()
         )
-
-        q = q.filter(
-            Apprentice.apprentice_id.in_(
-                assigned_apprentice_ids
-            )
-        )
-
-    # =========================================================
-    # APPRENTICE
-    # =========================================================
-
+        q = q.filter(Apprentice.apprentice_id.in_(assigned_apprentice_ids))
     elif current_user.role == "Apprentice":
-
-        q = q.filter(
-            Apprentice.user_id ==
-            current_user.user_id
-        )
-
-    # =========================================================
-    # SUPERVISOR
-    # =========================================================
-
-    elif current_user.role == "Supervisor":
-
-        # -----------------------------------------------------
-        # IMPORTANT:
-        #
-        # We need the relationship between Supervisor and
-        # Mentor before this section can be completed.
-        #
-        # Your current Mentor model does NOT contain a
-        # supervisor_id field.
-        # -----------------------------------------------------
-
-        raise HTTPException(
-            status_code=501,
-            detail=(
-                "Supervisor mentor assignment has not yet "
-                "been configured in the database."
-            )
-        )
-
-    # =========================================================
-    # UNKNOWN ROLE
-    # =========================================================
-
+        q = q.filter(Apprentice.user_id == current_user.user_id)
     else:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have permission to view apprentices."
-        )
-
-    # =========================================================
-    # SEARCH
-    # =========================================================
+        raise HTTPException(403, "You do not have permission to view apprentices.")
 
     if search:
         search_term = f"%{search.strip()}%"
-
         q = q.filter(
             (Apprentice.first_name.ilike(search_term))
-            |
-            (Apprentice.surname.ilike(search_term))
-            |
-            (Apprentice.id_number.ilike(search_term))
+            | (Apprentice.surname.ilike(search_term))
+            | (Apprentice.id_number.ilike(search_term))
         )
-
-    # =========================================================
-    # STATUS FILTER
-    # =========================================================
 
     if status:
         normalized_status = status.upper()
-
-        if normalized_status not in [
-            "ACTIVE",
-            "INACTIVE",
-        ]:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Invalid status. "
-                    "Use ACTIVE or INACTIVE."
-                )
-            )
-
-        q = q.filter(
-            Apprentice.status ==
-            normalized_status
-        )
-
-    # =========================================================
-    # TOTAL
-    #
-    # This must happen BEFORE pagination.
-    # =========================================================
+        if normalized_status not in ["ACTIVE", "INACTIVE"]:
+            raise HTTPException(400, "Invalid status. Use ACTIVE or INACTIVE.")
+        q = q.filter(Apprentice.status == normalized_status)
 
     total = q.count()
 
-    # =========================================================
-    # PAGINATION
-    # =========================================================
+    if sort_by not in {"apprentice_id", "first_name", "surname"}:
+        sort_by = "apprentice_id"
+    sort_column = getattr(Apprentice, sort_by)
+    if order == "desc":
+        sort_column = sort_column.desc()
 
-    results = (
-        q
-        .order_by(
-            Apprentice.apprentice_id.asc()
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-    # =========================================================
-    # RESPONSE
-    # =========================================================
+    results = q.order_by(sort_column).offset(skip).limit(limit).all()
 
     return {
-        "items": [
-            _enrich_apprentice_out(
-                apprentice,
-                db
-            )
-            for apprentice in results
-        ],
+        "items": [_enrich_apprentice_out(a, db) for a in results],
         "total": total,
         "skip": skip,
         "limit": limit,
     }
+
+
+@router.post("", response_model=ApprenticeDetailOut, status_code=201)
+def create_apprentice(
+    request: Request,
+    app_in: ApprenticeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Create a new apprentice. National ID must be unique."""
+    existing = db.query(Apprentice).filter(
+        Apprentice.id_number == app_in.id_number
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="An apprentice with this national ID number already exists.",
+        )
+    app = Apprentice(
+        first_name=app_in.first_name,
+        surname=app_in.surname,
+        id_number=app_in.id_number,
+        date_of_birth=app_in.date_of_birth,
+        gender=app_in.gender,
+        contact_number=app_in.contact_number,
+        address_line1=app_in.address_line1,
+        city=app_in.city,
+        province=app_in.province,
+    )
+    db.add(app)
+    db.commit()
+    db.refresh(app)
+    log_audit_action(
+        db,
+        "CREATE",
+        current_user.user_id,
+        "Apprentice",
+        app.apprentice_id,
+        new_value={"id_number": app.id_number, "names": f"{app.first_name} {app.surname}"},
+        ip_address=get_client_ip(request),
+    )
+    return _enrich_apprentice_detail(app, db)
+
 
 @router.get("/{apprentice_id}", response_model=ApprenticeDetailOut)
 def get_apprentice(
@@ -345,9 +287,13 @@ def update_apprentice(
     old_data = {
         c.name: str(getattr(app, c.name)) for c in app.__table__.columns
     }
-    update_data = app_in.to_model_dict()
-    for k, v in update_data.items():
-        setattr(app, k, v)
+    for field in (
+        "first_name", "surname", "date_of_birth", "gender",
+        "contact_number", "address_line1", "city", "province",
+    ):
+        value = getattr(app_in, field)
+        if value is not None:
+            setattr(app, field, value)
     app.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(app)
@@ -387,10 +333,42 @@ def deactivate_apprentice(
         new_value={"status": "INACTIVE"},
         ip_address=get_client_ip(request),
     )
-    return {
-        "message": "Apprentice deactivated",
-        "apprentice_id": apprentice_id,
-    }
+    return {"message": "Apprentice deactivated", "apprentice_id": apprentice_id}
+
+
+@router.patch("/{apprentice_id}/reactivate", status_code=200)
+def reactivate_apprentice(
+    apprentice_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    app = db.query(Apprentice).filter(
+        Apprentice.apprentice_id == apprentice_id
+    ).first()
+    if not app:
+        raise HTTPException(404, "Apprentice not found")
+    app.status = "ACTIVE"
+    app.updated_at = datetime.utcnow()
+    db.commit()
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "Apprentice",
+        app.apprentice_id,
+        new_value={"status": "ACTIVE"},
+        ip_address=get_client_ip(request),
+    )
+    return {"message": "Apprentice reactivated", "apprentice_id": apprentice_id}
+
+
+def _detect_image_type(content: bytes) -> Optional[str]:
+    if content.startswith(JPEG_MAGIC):
+        return "jpg"
+    if content.startswith(PNG_MAGIC):
+        return "png"
+    return None
 
 
 @router.post("/{apprentice_id}/photo", status_code=200)
@@ -399,7 +377,7 @@ def upload_photo(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin_or_supervisor),
+    current_user: User = Depends(require_admin),
 ):
     app = db.query(Apprentice).filter(
         Apprentice.apprentice_id == apprentice_id
@@ -411,10 +389,18 @@ def upload_photo(
     content = file.file.read()
     if len(content) > MAX_MB * 1024 * 1024:
         raise HTTPException(400, f"File exceeds {MAX_MB}MB limit")
-    ext = "jpg" if file.content_type == "image/jpeg" else "png"
-    path = os.path.join(UPLOAD_DIR, f"apprentice_{apprentice_id}.{ext}")
+    ext = _detect_image_type(content)
+    if ext is None:
+        raise HTTPException(400, "File content does not match a valid JPG/PNG image")
+    filename = f"{uuid4().hex}.{ext}"
+    path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
         f.write(content)
+    if app.photo_url and os.path.exists(app.photo_url):
+        try:
+            os.remove(app.photo_url)
+        except OSError:
+            pass
     app.photo_url = path
     db.commit()
     log_audit_action(
@@ -426,6 +412,28 @@ def upload_photo(
         ip_address=get_client_ip(request),
     )
     return {"photo_url": path}
+
+
+@router.get("/{apprentice_id}/photo")
+def get_photo(
+    apprentice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Serve the apprentice photograph through an authorised endpoint only."""
+    app = db.query(Apprentice).filter(
+        Apprentice.apprentice_id == apprentice_id
+    ).first()
+    if not app:
+        raise HTTPException(404, "Apprentice not found")
+    if current_user.role == "Apprentice" and app.user_id != current_user.user_id:
+        raise HTTPException(403, "Access denied")
+    if current_user.role == "Mentor":
+        _check_mentor_access(current_user, apprentice_id, db)
+    if not app.photo_url or not os.path.exists(app.photo_url):
+        raise HTTPException(404, "No photograph recorded")
+    media_type = "image/jpeg" if app.photo_url.lower().endswith(".jpg") else "image/png"
+    return FileResponse(app.photo_url, media_type=media_type)
 
 
 @router.get("/{apprentice_id}/education", response_model=EducationOut)
@@ -465,17 +473,12 @@ def create_education(
         raise HTTPException(
             400, "Education record already exists. Use PUT to update."
         )
-    subjects = edu_in.subjects_json or []
-    avg = (
-        sum(s.mark for s in subjects) / len(subjects) if subjects else None
-    )
     edu = Education(
         apprentice_id=apprentice_id,
         qualification_type=edu_in.qualification_type,
         institution_name=edu_in.institution_name,
-        subjects_json=[s.model_dump() for s in subjects],
-        average_mark=round(avg, 2) if avg is not None else None,
     )
+    _sync_subjects(edu, [s.model_dump() for s in (edu_in.subjects or [])])
     db.add(edu)
     db.commit()
     db.refresh(edu)
@@ -505,14 +508,9 @@ def update_education(
         raise HTTPException(
             404, "Education record not found. Use POST to create."
         )
-    subjects = edu_in.subjects_json or []
-    avg = (
-        sum(s.mark for s in subjects) / len(subjects) if subjects else None
-    )
     edu.qualification_type = edu_in.qualification_type
     edu.institution_name = edu_in.institution_name
-    edu.subjects_json = [s.model_dump() for s in subjects]
-    edu.average_mark = round(avg, 2) if avg is not None else None
+    _sync_subjects(edu, [s.model_dump() for s in (edu_in.subjects or [])])
     db.commit()
     db.refresh(edu)
     log_audit_action(

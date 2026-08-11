@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Any
 from database import get_db
 from models.prediction import AIPrediction
 from models.apprentice import Apprentice
 from models.user import User
 from schemas.prediction import PredictionOut, PredictionDetailOut
+from schemas.apprentice import ApprenticeOut
 from middleware.auth_middleware import (
     get_current_user,
     require_supervisor,
     require_admin_or_supervisor,
 )
 from middleware.audit_middleware import log_audit_action
+from services.config_service import get_int_setting
 from pydantic import BaseModel
-from typing import Optional, Any
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 
@@ -68,9 +69,11 @@ def get_at_risk_apprentices(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_or_supervisor),
 ):
+    """Apprentices whose latest dropout-risk prediction exceeds the configured threshold."""
+    threshold = get_int_setting(db, "dropout_risk_threshold")
     at_risk_predictions = (
         db.query(AIPrediction)
-        .filter(AIPrediction.dropout_risk > 60)
+        .filter(AIPrediction.dropout_risk > threshold)
         .order_by(AIPrediction.dropout_risk.desc())
         .all()
     )
@@ -86,10 +89,11 @@ def get_at_risk_apprentices(
         ).first()
         if not app:
             continue
+        masked = ApprenticeOut.model_validate(app, from_attributes=True)
         results.append({
             "apprentice_id": app.apprentice_id,
             "full_name": f"{app.first_name} {app.surname}",
-            "id_number": app.id_number,
+            "id_number": masked.id_number,
             "contact_number": app.contact_number,
             "status": app.status,
             "dropout_risk": float(pred.dropout_risk) if pred.dropout_risk else None,
