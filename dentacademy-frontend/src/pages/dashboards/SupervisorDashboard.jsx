@@ -123,7 +123,7 @@ export default function SupervisorDashboard() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
 
       {/* Header */}
       <div className="mb-6">

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
@@ -7,6 +8,7 @@ import Spinner from '../ui/Spinner';
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
     return (
@@ -31,11 +33,22 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      <Sidebar
+        mobileOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        <TopBar />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto p-6">
           {children}

@@ -14,11 +14,12 @@ import {
   Settings,
   PenLine,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from '../ui/Logo';
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onClose }) {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -82,16 +83,34 @@ export default function Sidebar() {
   if (management.length) groups.push({ label: 'Management', items: management });
   if (administration.length) groups.push({ label: 'Administration', items: administration });
 
+  const closeOnClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="w-64 bg-gradient-to-b from-brand-dark to-[#0E3A1C] min-h-screen text-white flex flex-col shrink-0">
-      <div className="p-6 flex items-center gap-3">
-        <Logo size={36} light />
-        <div>
-          <h1 className="text-lg font-bold leading-tight">DentAcademy</h1>
-          <p className="text-emerald-300/70 text-[11px] leading-tight">
-            Apprenticeship Portal
-          </p>
+    <aside
+      className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-brand-dark to-[#0E3A1C] min-h-screen text-white flex flex-col shrink-0 transform transition-transform duration-200 ease-in-out ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
+    >
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Logo size={36} light />
+          <div>
+            <h1 className="text-lg font-bold leading-tight">DentAcademy</h1>
+            <p className="text-emerald-300/70 text-[11px] leading-tight">
+              Apprenticeship Portal
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={closeOnClick}
+          className="lg:hidden text-emerald-100/80 hover:text-white p-1 rounded-md hover:bg-white/10"
+          aria-label="Close navigation"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-6 space-y-6">
@@ -109,6 +128,7 @@ export default function Sidebar() {
                   <Link
                     key={item.name}
                     to={item.path}
+                    onClick={closeOnClick}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       active
                         ? 'bg-brand text-white shadow-md'

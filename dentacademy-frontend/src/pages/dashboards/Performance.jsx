@@ -61,7 +61,7 @@ export default function Performance() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
       </div>
     );
@@ -69,7 +69,7 @@ export default function Performance() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div>
         <div className="bg-red-100 text-red-700 p-4 rounded">
           {error}
         </div>
@@ -84,7 +84,7 @@ export default function Performance() {
   const { apprentice, summary, modules, evaluations, prediction } = data;
 
   return (
-    <div className="p-6">
+    <div>
 
       {/* HEADER */}
 
