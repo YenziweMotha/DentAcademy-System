@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
+import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
 
 export default function Users() {
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -50,12 +53,15 @@ export default function Users() {
       await api.put(`/api/users/${user.user_id}`, {
         is_active: !user.is_active,
       });
-
+      toast.success(
+        user.is_active
+          ? `${user.full_name || user.username} deactivated.`
+          : `${user.full_name || user.username} activated.`
+      );
       await loadUsers();
     } catch (err) {
       console.error('Failed to update user:', err);
-
-      alert(
+      toast.error(
         err.response?.data?.detail ||
         'Failed to update user status.'
       );
@@ -79,7 +85,7 @@ export default function Users() {
         <button
           type="button"
           onClick={loadUsers}
-          className="mt-4 md:mt-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="mt-4 md:mt-0 bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
         >
           Refresh
         </button>
@@ -99,7 +105,7 @@ export default function Users() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by username, name or email..."
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
 
@@ -111,7 +117,7 @@ export default function Users() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
             >
               <option value="All">All Roles</option>
               <option value="Administrator">Administrator</option>
@@ -136,7 +142,7 @@ export default function Users() {
 
         {loading ? (
           <div className="p-6 text-gray-500">
-            Loading users...
+            <SkeletonTable rows={4} cols={5} />
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="p-6 text-gray-500">

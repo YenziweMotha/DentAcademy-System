@@ -1,6 +1,6 @@
 export default function ProgressBar({ progress, color = 'blue' }) {
   const bgColors = {
-    blue: 'bg-blue-600',
+    blue: 'bg-brand',
     green: 'bg-green-600',
     red: 'bg-red-600',
     yellow: 'bg-yellow-500'

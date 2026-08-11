@@ -2,30 +2,21 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import Spinner from '../ui/Spinner';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute:', {
-    path: location.pathname,
-    user,
-    userRole: user?.role,
-    allowedRoles,
-    loading,
-  });
-
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <Spinner size="lg" className="text-brand" />
       </div>
     );
   }
 
   if (!user) {
-    console.log('ProtectedRoute: No user → /login');
-
     return (
       <Navigate
         to="/login"
@@ -36,15 +27,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    console.log('ProtectedRoute: Role rejected', {
-      userRole: user.role,
-      allowedRoles,
-    });
-
     return <Navigate to="/login" replace />;
   }
-
-  console.log('ProtectedRoute: Access granted');
 
   return (
     <div className="flex h-screen bg-gray-100">

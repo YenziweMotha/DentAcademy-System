@@ -18,6 +18,11 @@ export default {
         'dent-label': '#9E9E9E',
         'dent-error': '#B91C1C',
         'dent-warning': '#B35C00',
+        'brand': '#1B6B2F',
+        'brand-dark': '#145224',
+        'brand-light': '#E8F5ED',
+        'accent': '#D97706',
+        'accent-dark': '#B45309',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
