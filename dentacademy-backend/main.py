@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import IntegrityError
 from routers import (
@@ -122,3 +123,23 @@ app.include_router(predictions_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
 app.include_router(config_router)
+
+
+# ------------------------------------------------------------------
+# Startup: ensure tables + optional one-time seed (env driven)
+# ------------------------------------------------------------------
+
+@app.on_event("startup")
+async def on_startup():
+    import startup
+
+    startup.run_startup()
+
+
+# ------------------------------------------------------------------
+# Static SPA (built frontend) served from FastAPI in production
+# ------------------------------------------------------------------
+
+_DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+if os.path.isdir(_DIST_DIR):
+    app.mount("/", StaticFiles(directory=_DIST_DIR, html=True), name="spa")
