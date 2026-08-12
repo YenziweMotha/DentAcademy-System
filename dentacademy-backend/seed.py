@@ -78,8 +78,8 @@ SessionLocal = sessionmaker(
 def is_tidb(engine):
     try:
         with engine.connect() as conn:
-            conn.execute(text("SELECT @@tidb_version"))
-            return True
+            version = conn.execute(text("SELECT VERSION()")).scalar()
+            return "TiDB" in (version or "")
     except Exception:
         return False
 
@@ -135,9 +135,9 @@ def create_audit_triggers(session):
 # Dataset Size
 # ------------------------------------------------------------------
 
-NUMBER_OF_APPRENTICES = 150
+NUMBER_OF_APPRENTICES = int(os.getenv("SEED_APPRENTICES", "150"))
 
-NUMBER_OF_MENTORS = 20
+NUMBER_OF_MENTORS = int(os.getenv("SEED_MENTORS", "20"))
 
 EVALUATIONS_PER_APPRENTICE = 5
 
