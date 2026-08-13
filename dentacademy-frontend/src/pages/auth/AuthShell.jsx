@@ -14,20 +14,20 @@ export default function AuthShell({ title, subtitle, children }) {
 
         <div className="space-y-8">
           <h2 className="text-4xl font-bold leading-tight max-w-md">
-            Shaping the next generation of dental professionals.
+            Shaping the next generation of skilled professionals.
           </h2>
           <p className="text-emerald-50 text-sm max-w-md leading-relaxed">
-            Aspiring dental professionals completing accredited
+            Aspiring professionals completing accredited
             training through structured workplace apprenticeships.
           </p>
           <ul className="space-y-3 text-emerald-50 text-sm">
             <li className="flex items-center gap-3">
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Learn under the guidance of experienced, registered practitioners
+              Learn under the guidance of experienced, registered workshop mentors
             </li>
             <li className="flex items-center gap-3">
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Build the clinical competence and professionalism the dental industry trusts
+              Build the hands-on competence and professionalism the industry trusts
             </li>
           </ul>
         </div>

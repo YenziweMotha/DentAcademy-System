@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import Logo from '../components/ui/Logo';
 import AlertBanner from '../components/ui/AlertBanner';
+import brandImage from '../auto-mechanic-working-underneath-car-lifting-machine-at-the-garage-auto-repair-shop-car-service-repair-3-video.jpg';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -83,8 +84,12 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Brand panel */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand-dark via-brand to-emerald-700 flex-col justify-between p-12 text-white">
-        <div className="flex items-center gap-3">
+      <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={brandImage} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-dark/90 via-brand/85 to-emerald-700/90" />
+        </div>
+        <div className="relative z-10 flex items-center gap-3">
           <Logo size={44} light />
           <div>
             <h1 className="text-2xl font-bold leading-tight">DentAcademy</h1>
@@ -92,27 +97,27 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="space-y-8">
-          <h2 className="text-4xl font-bold leading-tight max-w-md">
-            Shaping the next generation of dental professionals.
+        <div className="relative z-10 space-y-8">
+          <h2 className="text-4xl font-bold leading-tight max-w-md shadow-md">
+            Shaping the next generation of skilled professionals.
           </h2>
           <p className="text-emerald-50 text-sm max-w-md leading-relaxed">
-            Aspiring dental professionals completing accredited
+            Aspiring professionals completing accredited
             training through structured workplace apprenticeships.
           </p>
           <ul className="space-y-3 text-emerald-50 text-sm">
             <li className="flex items-center gap-3">
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Learn under the guidance of experienced, registered practitioners
+              Learn under the guidance of experienced, registered workshop mentors
             </li>
             <li className="flex items-center gap-3">
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Build the clinical competence and professionalism the dental industry trusts
+              Build the hands-on competence and professionalism the industry trusts
             </li>
           </ul>
         </div>
 
-        <p className="text-emerald-200/70 text-xs">
+        <p className="relative z-10 text-emerald-200/70 text-xs">
           © {new Date().getFullYear()} DentAcademy. All rights reserved.
         </p>
       </div>
