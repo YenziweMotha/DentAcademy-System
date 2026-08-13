@@ -9,6 +9,7 @@ export default function AdminDashboard() {
     at_risk_count: 0,
     avg_completion_pct: 0,
     pending_evaluations: 0,
+    recent_audit: [],
   });
 
   const [apprentices, setApprentices] = useState([]);
@@ -107,6 +108,14 @@ export default function AdminDashboard() {
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             Users
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/admin/settings')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Settings
           </button>
 
           <button
@@ -289,6 +298,40 @@ export default function AdminDashboard() {
 
         )}
 
+      </div>
+
+      {/* Recent activity */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Recent Activity
+          </h2>
+        </div>
+
+        {data.recent_audit.length === 0 ? (
+          <div className="p-6 text-gray-500">No recent activity recorded.</div>
+        ) : (
+          <div className="divide-y">
+            {data.recent_audit.map((entry) => (
+              <div
+                key={entry.log_id}
+                className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+              >
+                <p className="text-sm text-gray-800">
+                  <span className="font-medium">{entry.action_type}</span>
+                  <span className="text-gray-500">
+                    {' '}
+                    on {entry.entity_type}
+                    {entry.record_id ? ` #${entry.record_id}` : ''}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-500">
+                  {new Date(entry.timestamp).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

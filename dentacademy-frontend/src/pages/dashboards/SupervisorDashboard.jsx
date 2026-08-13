@@ -7,6 +7,10 @@ import { useNavigate } from 'react-router-dom';
 export default function SupervisorDashboard() {
   const [data, setData] = useState({
     pending_evaluations: 0,
+    avg_completion_pct: 0,
+    at_risk_count: 0,
+    evaluation_alert_days: 30,
+    apprentice_list: [],
   });
 
   const [apprentices, setApprentices] = useState([]);
@@ -141,7 +145,7 @@ export default function SupervisorDashboard() {
       )}
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
         <div className="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
           <h2 className="text-gray-500 text-sm font-medium uppercase">
@@ -163,7 +167,76 @@ export default function SupervisorDashboard() {
           </p>
         </div>
 
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+          <h2 className="text-gray-500 text-sm font-medium uppercase">
+            Average Completion
+          </h2>
+
+          <p className="text-3xl font-bold text-green-600 mt-2">
+            {data.avg_completion_pct}%
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
+          <h2 className="text-gray-500 text-sm font-medium uppercase">
+            At Risk
+          </h2>
+
+          <p className="text-3xl font-bold text-red-600 mt-2">
+            {data.at_risk_count}
+          </p>
+        </div>
+
       </div>
+
+      {/* Needs evaluation */}
+      {data.apprentice_list.filter((a) => a.needs_evaluation).length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Needs Evaluation
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Apprentices with no evaluation in the last{' '}
+              {data.evaluation_alert_days} days.
+            </p>
+          </div>
+
+          <div className="divide-y">
+            {data.apprentice_list
+              .filter((a) => a.needs_evaluation)
+              .map((apprentice) => (
+                <div
+                  key={apprentice.apprentice_id}
+                  className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                >
+                  <div>
+                    <h3 className="font-semibold text-gray-800">
+                      {apprentice.full_name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Completion:{' '}
+                      <span className="font-medium">
+                        {apprentice.completion_pct}%
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/dashboard/performance/${apprentice.apprentice_id}`
+                      )
+                    }
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  >
+                    View Performance
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Apprentice Performance */}
       <div className="bg-white rounded-lg shadow">

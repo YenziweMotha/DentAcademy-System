@@ -17,6 +17,7 @@ class Mentor(Base):
     contact_number = Column(String(20), nullable=True)
     email = Column(String(150), nullable=True)
     specialisation = Column(String(150), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")

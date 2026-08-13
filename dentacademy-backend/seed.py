@@ -25,6 +25,7 @@ from models import (
     Mentor,
     Apprentice,
     Education,
+    EducationSubject,
     Module,
     ModuleProgress,
     MentorAssignment,
@@ -67,13 +68,41 @@ Faker.seed(SEED)
 
 fake = Faker("zu_ZA")
 
+
+# ------------------------------------------------------------------
+# Audit-immutability triggers (recreated after cleanup)
+# ------------------------------------------------------------------
+
+def drop_audit_triggers(session):
+    session.execute(text("DROP TRIGGER IF EXISTS audit_log_no_update"))
+    session.execute(text("DROP TRIGGER IF EXISTS audit_log_no_delete"))
+    session.commit()
+
+
+def create_audit_triggers(session):
+    session.execute(
+        text(
+            "CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log "
+            "FOR EACH ROW SIGNAL SQLSTATE '45000' "
+            "SET MESSAGE_TEXT = 'audit_log is INSERT-ONLY; updates are forbidden'"
+        )
+    )
+    session.execute(
+        text(
+            "CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log "
+            "FOR EACH ROW SIGNAL SQLSTATE '45000' "
+            "SET MESSAGE_TEXT = 'audit_log is INSERT-ONLY; deletes are forbidden'"
+        )
+    )
+    session.commit()
+
 # ------------------------------------------------------------------
 # Dataset Size
 # ------------------------------------------------------------------
 
-NUMBER_OF_APPRENTICES = 5000
+NUMBER_OF_APPRENTICES = 150
 
-NUMBER_OF_MENTORS = 250
+NUMBER_OF_MENTORS = 20
 
 EVALUATIONS_PER_APPRENTICE = 5
 
@@ -652,11 +681,11 @@ def generate_subject_marks(ability):
 
 def create_users(session):
     """
-    Creates:
-        - 1 Administrator
-        - 1 Supervisor
-        - NUM_MENTORS Mentor accounts
-        - NUM_APPRENTICES Apprentice accounts
+    Creates the two staff accounts:
+        - 1 Administrator (admin / Admin@123)
+        - 1 Supervisor (supervisor / Super@123)
+    Bulk mentor/apprentice user accounts are created alongside their
+    profiles in create_mentors / create_apprentices (no orphan accounts).
 
     Returns:
         users (list)
@@ -690,7 +719,7 @@ def create_users(session):
     supervisor = User(
         username="supervisor",
         email="supervisor@dentacademy.co.za",
-        password_hash=hash_password("Supervisor@123"),
+        password_hash=hash_password("Super@123"),
         full_name="Main Supervisor",
         role="Supervisor",
         is_active=True,
@@ -699,68 +728,9 @@ def create_users(session):
     session.add(supervisor)
     users.append(supervisor)
 
-    # ------------------------------------------------------
-    # Mentor Accounts
-    # ------------------------------------------------------
-
-    for i in range(1, NUMBER_OF_MENTORS + 1):
-
-        first = random.choice(FIRST_NAMES)
-        surname = random.choice(LAST_NAMES)
-
-        mentor = User(
-
-            username=f"mentor{i:03}",
-
-            email=f"mentor{i:03}@dentacademy.co.za",
-
-            password_hash=hash_password("Mentor@123"),
-
-            full_name=f"{first} {surname}",
-
-            role="Mentor",
-
-            is_active=True,
-        )
-
-        session.add(mentor)
-        users.append(mentor)
-
-    # ------------------------------------------------------
-    # Apprentice Accounts
-    # ------------------------------------------------------
-
-    for i in range(1, NUMBER_OF_APPRENTICES + 1):
-
-        first = random.choice(FIRST_NAMES)
-        surname = random.choice(LAST_NAMES)
-
-        apprentice = User(
-
-            username=f"apprentice{i:05}",
-
-            email=f"apprentice{i:05}@dentacademy.co.za",
-
-            password_hash=hash_password("Password@123"),
-
-            full_name=f"{first} {surname}",
-
-            role="Apprentice",
-
-            is_active=True,
-        )
-
-        session.add(apprentice)
-        users.append(apprentice)
-
-        # Commit every 500 records for better performance
-        if i % 500 == 0:
-            session.flush()
-            print(f"  Created {i:,} apprentice users...")
-
     session.commit()
 
-    print(f"✓ Created {len(users):,} users.")
+    print(f"✓ Created {len(users):,} staff users.")
 
     return users, supervisor
 # ----------------------------------------------------------------------
@@ -977,7 +947,7 @@ def create_mentors(session):
 
         first, last = generate_name()
 
-        username = generate_username(first, last, i)
+        username = f"mentor{i:03}"
 
         user = User(
 
@@ -1064,7 +1034,7 @@ def create_apprentices(session, mentors):
 
         dob = random_birth_date()
 
-        username = generate_username(first_name, last_name, i)
+        username = f"apprentice{i:05}"
 
         email = generate_email(username)
 
@@ -1207,7 +1177,7 @@ def create_education_records(
 
         institution = generate_college()
 
-        subjects_json, average_mark = generate_subject_marks(
+        subjects, average_mark = generate_subject_marks(
             profile["ability"]
         )
 
@@ -1219,7 +1189,10 @@ def create_education_records(
 
             institution_name=institution,
 
-            subjects_json=subjects_json,
+            subjects=[
+                EducationSubject(subject_name=s["subject"], mark=s["mark"])
+                for s in subjects
+            ],
 
             average_mark=average_mark
 
@@ -2266,19 +2239,28 @@ def seed():
 
         print("\nCleaning database...")
 
-        session.query(AuditLog).delete()
-        session.query(AIPrediction).delete()
-        session.query(Attendance).delete()
-        session.query(Evaluation).delete()
-        session.query(ModuleProgress).delete()
-       # session.query(MentorAssignment).delete()
-        session.query(Education).delete()
-        session.query(Apprentice).delete()
-        session.query(Mentor).delete()
-        session.query(Module).delete()
-        session.query(User).delete()
+        drop_audit_triggers(session)
 
-        session.commit()
+        try:
+
+            session.query(AuditLog).delete()
+            session.query(AIPrediction).delete()
+            session.query(Attendance).delete()
+            session.query(Evaluation).delete()
+            session.query(ModuleProgress).delete()
+            session.query(MentorAssignment).delete()
+            session.query(EducationSubject).delete()
+            session.query(Education).delete()
+            session.query(Apprentice).delete()
+            session.query(Mentor).delete()
+            session.query(Module).delete()
+            session.query(User).delete()
+
+            session.commit()
+
+        finally:
+
+            create_audit_triggers(session)
 
         print("Database cleaned.")
 
@@ -2389,7 +2371,7 @@ def seed():
         print(f"Mentors:             {session.query(Mentor).count():,}")
         print(f"Apprentices:         {session.query(Apprentice).count():,}")
         print(f"Education:           {session.query(Education).count():,}")
-      #  print(f"Assignments:         {session.query(MentorAssignment).count():,}")
+        print(f"Assignments:         {session.query(MentorAssignment).count():,}")
         print(f"Modules:             {session.query(Module).count():,}")
         print(f"Attendance:          {session.query(Attendance).count():,}")
         print(f"Module Progress:     {session.query(ModuleProgress).count():,}")

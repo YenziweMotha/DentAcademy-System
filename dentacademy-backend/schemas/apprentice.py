@@ -1,7 +1,7 @@
 from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import date, datetime
-from typing import List
+
 
 class SubjectMark(BaseModel):
     subject: str
@@ -18,7 +18,7 @@ class SubjectMark(BaseModel):
 class EducationCreate(BaseModel):
     qualification_type: str
     institution_name: str
-    subjects_json: Optional[List[SubjectMark]] = None
+    subjects: Optional[List[SubjectMark]] = None
 
     @field_validator("qualification_type")
     @classmethod
@@ -33,7 +33,7 @@ class EducationOut(BaseModel):
     apprentice_id: int
     qualification_type: str
     institution_name: str
-    subjects_json: Optional[List[Any]] = None
+    subjects: Optional[List[SubjectMark]] = None
     average_mark: Optional[float] = None
     created_at: datetime
 
@@ -41,19 +41,23 @@ class EducationOut(BaseModel):
 
 
 class ApprenticeCreate(BaseModel):
-    last_name: str
     first_name: str
+    surname: str
     id_number: str
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
-    address_street: Optional[str] = None
-    address_city: Optional[str] = None
-    address_province: Optional[str] = None
-    address_postal: Optional[str] = None
-    qualification_type: Optional[str] = None
-    institution: Optional[str] = None
-    user_id: Optional[int] = None
+    address_line1: Optional[str] = None
+    city: Optional[str] = None
+    province: Optional[str] = None
+
+    @field_validator("first_name", "surname")
+    @classmethod
+    def validate_required_names(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Name fields cannot be blank")
+        return v
 
     @field_validator("id_number")
     @classmethod
@@ -69,58 +73,46 @@ class ApprenticeCreate(BaseModel):
             raise ValueError("Gender must be Male, Female, or Other")
         return v
 
-    @field_validator("qualification_type")
+    @field_validator("contact_number")
     @classmethod
-    def validate_qualification(cls, v):
-        if v and v not in {"NATED", "NCV", "NQF"}:
-            raise ValueError("Qualification type must be NATED, NCV, or NQF")
+    def validate_contact_number(cls, v):
+        if v and (not v.isdigit() or len(v) not in (10, 11, 12)):
+            raise ValueError("Contact number must be 10-12 digits")
         return v
-
-    def to_model_dict(self) -> dict:
-        return {
-            "surname": self.last_name,
-            "first_name": self.first_name,
-            "id_number": self.id_number,
-            "date_of_birth": self.date_of_birth,
-            "gender": self.gender,
-            "contact_number": self.contact_number,
-            "address_line1": self.address_street,
-            "city": self.address_city,
-            "province": self.address_province,
-            "user_id": self.user_id,
-        }
 
 
 class ApprenticeUpdate(BaseModel):
-    last_name: Optional[str] = None
     first_name: Optional[str] = None
+    surname: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
-    address_street: Optional[str] = None
-    address_city: Optional[str] = None
-    address_province: Optional[str] = None
-    address_postal: Optional[str] = None
+    address_line1: Optional[str] = None
+    city: Optional[str] = None
+    province: Optional[str] = None
 
-    def to_model_dict(self) -> dict:
-        data = {}
-        if self.last_name is not None:
-            data["surname"] = self.last_name
-        if self.first_name is not None:
-            data["first_name"] = self.first_name
-        if self.date_of_birth is not None:
-            data["date_of_birth"] = self.date_of_birth
-        if self.gender is not None:
-            data["gender"] = self.gender
-        if self.contact_number is not None:
-            data["contact_number"] = self.contact_number
-        if self.address_street is not None:
-            data["address_line1"] = self.address_street
-        if self.address_city is not None:
-            data["city"] = self.address_city
-        if self.address_province is not None:
-            data["province"] = self.address_province
-        return data
+    @field_validator("first_name", "surname")
+    @classmethod
+    def validate_required_names(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Name fields cannot be blank")
+        return v
+
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v):
+        if v is not None and v not in {"Male", "Female", "Other"}:
+            raise ValueError("Gender must be Male, Female, or Other")
+        return v
+
+    @field_validator("contact_number")
+    @classmethod
+    def validate_contact_number(cls, v):
+        if v and (not v.isdigit() or len(v) not in (10, 11, 12)):
+            raise ValueError("Contact number must be 10-12 digits")
+        return v
 
 
 class ApprenticeOut(BaseModel):
@@ -181,6 +173,7 @@ class ApprenticeDetailOut(BaseModel):
         if v and isinstance(v, str) and len(v) == 13:
             return v[:6] + "***" + v[-4:]
         return v
+
 
 class ApprenticePaginatedOut(BaseModel):
     items: List[ApprenticeOut]

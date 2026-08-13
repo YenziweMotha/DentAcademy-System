@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models.apprentice import Apprentice, Education
+from models.education import Education
 from models.module import ModuleProgress, Module
 from models.evaluation import Evaluation
 from models.prediction import AIPrediction
@@ -15,17 +15,16 @@ def generate_prediction(apprentice_id: int, db: Session, generated_by: int = Non
     if not apprentice:
         raise ValueError("Apprentice not found")
 
-    edu_records = (
-        db.query(Education).filter(Education.apprentice_id == apprentice_id).all()
+    edu_record = (
+        db.query(Education).filter(Education.apprentice_id == apprentice_id).first()
     )
     avg_mark = (
-        sum(float(e.average_mark) for e in edu_records if e.average_mark is not None)
-        / len(edu_records)
-        if edu_records
+        float(edu_record.average_mark)
+        if edu_record and edu_record.average_mark is not None
         else None
     )
 
-    total_modules = db.query(Module).count()
+    total_modules = db.query(Module).filter(Module.is_active == True).count()
     completed_modules = (
         db.query(ModuleProgress)
         .filter(

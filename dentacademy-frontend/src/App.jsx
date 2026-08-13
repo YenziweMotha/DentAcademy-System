@@ -12,6 +12,7 @@ import ApprenticeDashboard from './pages/dashboards/ApprenticeDashboard';
 import Performance from './pages/dashboards/Performance';
 import Users from './pages/dashboards/Users';
 import Reports from './pages/dashboards/Reports';
+import SystemSettings from './pages/dashboards/SystemSettings';
 
 function App() {
   return (
@@ -42,6 +43,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['Administrator']}>
                 <Users />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin System Settings */}
+          <Route
+            path="/dashboard/admin/settings"
+            element={
+              <ProtectedRoute allowedRoles={['Administrator']}>
+                <SystemSettings />
               </ProtectedRoute>
             }
           />

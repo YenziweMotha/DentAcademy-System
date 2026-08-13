@@ -2,7 +2,7 @@ from database import Base, engine
 
 # Import ALL models so SQLAlchemy registers them
 from models.user import User
-from models.apprentice import Apprentice, Education
+from models.education import Education
 from models.mentor import Mentor
 from models.module import Module, ModuleProgress
 from models.evaluation import Evaluation

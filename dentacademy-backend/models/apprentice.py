@@ -1,11 +1,9 @@
 from sqlalchemy import (
-    Column, Integer, String, Date, Boolean, DateTime,
-    Enum, ForeignKey, Text, JSON, Numeric, UniqueConstraint
+    Column, Integer, String, Date, Boolean, DateTime, Enum, ForeignKey
 )
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
-from pydantic import BaseModel
 
 
 class Apprentice(Base):
@@ -45,24 +43,3 @@ class Apprentice(Base):
     predictions = relationship("AIPrediction", back_populates="apprentice")
     mentor_assignments = relationship("MentorAssignment", back_populates="apprentice")
     attendance_records = relationship("Attendance", back_populates="apprentice")
-
-
-class Education(Base):
-    """One Education record per Apprentice (one-to-one via apprentice_id unique)."""
-    __tablename__ = "education"
-
-    education_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    apprentice_id = Column(
-        Integer, ForeignKey("apprentices.apprentice_id", ondelete="RESTRICT"),
-        unique=True, nullable=False
-    )
-    qualification_type = Column(
-        Enum("NATED", "NCV", "NQF", name="qualification_enum"), nullable=False
-    )
-    institution_name = Column(String(200), nullable=False)
-    # Stored as JSON: [{"subject": "Mathematics", "mark": 75}, ...]
-    subjects_json = Column(JSON, nullable=True)
-    average_mark = Column(Numeric(5, 2), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    apprentice = relationship("Apprentice", back_populates="education")

@@ -10,6 +10,30 @@ from datetime import datetime
 class Evaluation(Base):
     __tablename__ = "evaluations"
 
+    __table_args__ = (
+        CheckConstraint(
+            "discipline BETWEEN 1 AND 5", name="ck_eval_discipline"
+        ),
+        CheckConstraint(
+            "commitment BETWEEN 1 AND 5", name="ck_eval_commitment"
+        ),
+        CheckConstraint(
+            "willingness BETWEEN 1 AND 5", name="ck_eval_willingness"
+        ),
+        CheckConstraint(
+            "teamwork BETWEEN 1 AND 5", name="ck_eval_teamwork"
+        ),
+        CheckConstraint(
+            "time_management BETWEEN 1 AND 5", name="ck_eval_time_management"
+        ),
+        CheckConstraint(
+            "professional_conduct BETWEEN 1 AND 5", name="ck_eval_professional_conduct"
+        ),
+        CheckConstraint(
+            "overall_score BETWEEN 1 AND 5", name="ck_eval_overall_score"
+        ),
+    )
+
     evaluation_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     apprentice_id = Column(
         Integer, ForeignKey("apprentices.apprentice_id", ondelete="RESTRICT"), nullable=False
