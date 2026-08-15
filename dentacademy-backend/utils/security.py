@@ -1,4 +1,7 @@
 import os
+import random
+import re
+import string
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
@@ -38,6 +41,62 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         plain_password.encode("utf-8"),
         hashed_password.encode("utf-8")
     )
+
+
+def _clean_name_part(value: Optional[str], fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]", "", value or "").strip()
+    return cleaned if cleaned else fallback
+
+
+def generate_username(full_name: str, email: str = "", db=None) -> str:
+    """Derive a unique username from the user's name/email credentials."""
+    parts = [p for p in (full_name or "").split() if p.strip()]
+    first = _clean_name_part(parts[0] if parts else "", "user")
+    last = _clean_name_part(parts[-1] if len(parts) > 1 else "", first)
+
+    base = f"{first}.{last}".lower()
+    base = re.sub(r"[^a-z0-9.]", "", base)
+    if not base:
+        base = _clean_name_part(email.split("@")[0], "user").lower()
+
+    candidate = base
+    suffix = 1
+    if db is not None:
+        from models.user import User  # local import avoids circular dependency
+        while db.query(User).filter(User.username == candidate).first():
+            candidate = f"{base}{suffix}"
+            suffix += 1
+    return candidate
+
+
+def generate_credential_password(
+    full_name: str,
+    id_number: Optional[str] = None,
+    contact_number: Optional[str] = None,
+    email: str = "",
+) -> str:
+    """Build a strong password from the person's own credentials.
+
+    The password is a deterministic combination of their name, identity
+    number, contact number and email, so it is memorable to the owner but
+    still satisfies the strength rules (upper, lower, digit, special).
+    """
+    parts = [p for p in (full_name or "").split() if p.strip()]
+    first = _clean_name_part(parts[0] if parts else "", "Apprentice").capitalize()
+    last = _clean_name_part(parts[-1] if len(parts) > 1 else "", "User").capitalize()
+
+    digits = ""
+    for source in (id_number, contact_number, email):
+        if source:
+            digits += "".join(ch for ch in str(source) if ch.isdigit())
+    digits = digits[-6:]
+
+    if len(digits) < 4:
+        digits = (digits + "2026").zfill(4)[:4]
+
+    special = random.choice("!@#$%&")
+    password = f"{first}{special}{last}{digits}!"
+    return password[:24]
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

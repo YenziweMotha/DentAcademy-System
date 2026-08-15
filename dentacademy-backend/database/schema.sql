@@ -35,6 +35,7 @@ CREATE TABLE `apprentices` (
   `gender` enum('Male','Female','Other') DEFAULT NULL,
   `id_number` varchar(13) NOT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
   `address_line1` varchar(200) DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
   `province` varchar(100) DEFAULT NULL,

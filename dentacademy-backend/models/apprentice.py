@@ -20,6 +20,7 @@ class Apprentice(Base):
     gender = Column(Enum("Male", "Female", "Other", name="gender_enum"), nullable=True)
     id_number = Column(String(13), unique=True, nullable=False, index=True)
     contact_number = Column(String(20), nullable=True)
+    email = Column(String(150), nullable=True, index=True)
     address_line1 = Column(String(200), nullable=True)
     city = Column(String(100), nullable=True)
     province = Column(String(100), nullable=True)

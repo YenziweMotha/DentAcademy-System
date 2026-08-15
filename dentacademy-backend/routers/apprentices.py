@@ -18,7 +18,8 @@ from schemas.apprentice import (
     ApprenticeDetailOut,
     EducationCreate,
     EducationOut,
-    ApprenticePaginatedOut
+    ApprenticePaginatedOut,
+    ApprenticeCreatedOut,
 )
 from middleware.auth_middleware import (
     get_current_user,
@@ -26,7 +27,13 @@ from middleware.auth_middleware import (
     require_admin_or_supervisor,
 )
 from middleware.audit_middleware import log_audit_action, get_client_ip
-from utils.security import mask_id_number
+from utils.security import (
+    mask_id_number,
+    get_password_hash,
+    generate_username,
+    generate_credential_password,
+)
+from services.email_service import send_account_credentials_email
 import os
 from datetime import datetime
 
@@ -63,6 +70,7 @@ def _enrich_apprentice_out(app: Apprentice, db: Session) -> dict:
 "id_number": mask_id_number(app.id_number),
         "gender": app.gender,
         "contact_number": app.contact_number,
+        "email": app.email,
         "city": app.city,
         "province": app.province,
         "photo_url": app.photo_url,
@@ -211,7 +219,7 @@ def list_apprentices(
     }
 
 
-@router.post("", response_model=ApprenticeDetailOut, status_code=201)
+@router.post("", response_model=ApprenticeCreatedOut, status_code=201)
 def create_apprentice(
     request: Request,
     app_in: ApprenticeCreate,
@@ -227,6 +235,41 @@ def create_apprentice(
             status_code=409,
             detail="An apprentice with this national ID number already exists.",
         )
+    if app_in.email:
+        if db.query(User).filter(User.email == app_in.email).first():
+            raise HTTPException(
+                status_code=409,
+                detail="A user account already exists for this email address.",
+            )
+
+    # Auto-provision a login account so the apprentice can sign in and give
+    # feedback. The password is a combination of their credentials.
+    app_user = None
+    credentials_sent = False
+    if app_in.email:
+        username = generate_username(
+            f"{app_in.first_name} {app_in.surname}", app_in.email, db
+        )
+        password = generate_credential_password(
+            full_name=f"{app_in.first_name} {app_in.surname}",
+            id_number=app_in.id_number,
+            contact_number=app_in.contact_number,
+            email=app_in.email,
+        )
+        app_user = User(
+            username=username,
+            email=app_in.email,
+            password_hash=get_password_hash(password),
+            full_name=f"{app_in.first_name} {app_in.surname}",
+            role="Apprentice",
+        )
+        db.add(app_user)
+        db.flush()
+        credentials_sent = send_account_credentials_email(
+            app_in.email, username, password,
+            f"{app_in.first_name} {app_in.surname}",
+        )
+
     app = Apprentice(
         first_name=app_in.first_name,
         surname=app_in.surname,
@@ -234,9 +277,11 @@ def create_apprentice(
         date_of_birth=app_in.date_of_birth,
         gender=app_in.gender,
         contact_number=app_in.contact_number,
+        email=app_in.email,
         address_line1=app_in.address_line1,
         city=app_in.city,
         province=app_in.province,
+        user_id=app_user.user_id if app_user else None,
     )
     db.add(app)
     db.commit()
@@ -247,10 +292,22 @@ def create_apprentice(
         current_user.user_id,
         "Apprentice",
         app.apprentice_id,
-        new_value={"id_number": app.id_number, "names": f"{app.first_name} {app.surname}"},
+        new_value={
+            "id_number": app.id_number,
+            "names": f"{app.first_name} {app.surname}",
+            "account_created": app_user is not None,
+            "credentials_emailed": credentials_sent,
+        },
         ip_address=get_client_ip(request),
     )
-    return _enrich_apprentice_detail(app, db)
+    data = _enrich_apprentice_detail(app, db)
+    if app_user is not None:
+        data["account_credentials"] = {
+            "username": app_user.username,
+            "sent": credentials_sent,
+            "password": None if credentials_sent else password,
+        }
+    return data
 
 
 @router.get("/{apprentice_id}", response_model=ApprenticeDetailOut)
@@ -289,7 +346,7 @@ def update_apprentice(
     }
     for field in (
         "first_name", "surname", "date_of_birth", "gender",
-        "contact_number", "address_line1", "city", "province",
+        "contact_number", "email", "address_line1", "city", "province",
     ):
         value = getattr(app_in, field)
         if value is not None:

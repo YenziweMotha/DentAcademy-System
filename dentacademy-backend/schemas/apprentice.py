@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, EmailStr
 from typing import Optional, List, Any
 from datetime import date, datetime
 
@@ -47,6 +47,7 @@ class ApprenticeCreate(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     address_line1: Optional[str] = None
     city: Optional[str] = None
     province: Optional[str] = None
@@ -87,6 +88,7 @@ class ApprenticeUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     address_line1: Optional[str] = None
     city: Optional[str] = None
     province: Optional[str] = None
@@ -157,6 +159,7 @@ class ApprenticeDetailOut(BaseModel):
     id_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     address_line1: Optional[str] = None
+    email: Optional[str] = None
     user_id: Optional[int] = None
     qualification_type: Optional[str] = None
     institution: Optional[str] = None
@@ -180,3 +183,7 @@ class ApprenticePaginatedOut(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class ApprenticeCreatedOut(ApprenticeDetailOut):
+    account_credentials: Optional[dict] = None

@@ -22,11 +22,14 @@ def validate_password_strength(v: str) -> str:
 
 
 class UserCreate(BaseModel):
-    username: str
+    username: Optional[str] = None
     email: EmailStr
-    password: str
+    password: Optional[str] = None
     full_name: str
     role: str
+    # Used to build a credential-combination password when `password` is omitted.
+    id_number: Optional[str] = None
+    contact_number: Optional[str] = None
 
     @field_validator("role")
     @classmethod
@@ -38,6 +41,8 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v):
+        if v is None:
+            return v
         return validate_password_strength(v)
 
 
@@ -66,6 +71,13 @@ class UserOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserCreatedOut(UserOut):
+    """User creation response; may include auto-generated credentials in
+    development when SMTP is not configured, so admins can relay them."""
+    credentials_sent: bool = False
+    dev_password: Optional[str] = None
 
 
 class PasswordChange(BaseModel):

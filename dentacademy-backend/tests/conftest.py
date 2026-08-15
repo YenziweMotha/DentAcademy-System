@@ -7,6 +7,9 @@ os.environ["DATABASE_URL"] = (
 )
 os.environ["JWT_SECRET_KEY"] = "test-jwt-secret"
 os.environ["ENVIRONMENT"] = "test"
+os.environ["SMTP_HOST"] = ""
+os.environ["SMTP_USERNAME"] = ""
+os.environ["SMTP_PASSWORD"] = ""
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 

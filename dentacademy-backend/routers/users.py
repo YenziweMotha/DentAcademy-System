@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
 from models.user import User
-from schemas.auth import UserCreate, UserUpdate, UserOut
-from utils.security import get_password_hash
+from schemas.auth import UserCreate, UserUpdate, UserOut, UserCreatedOut
+from utils.security import get_password_hash, generate_username, generate_credential_password
 from middleware.auth_middleware import get_current_user, require_admin
 from middleware.audit_middleware import log_audit_action, get_client_ip
+from services.email_service import send_account_credentials_email
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -21,14 +22,20 @@ def list_users(
     return db.query(User).offset(skip).limit(limit).all()
 
 
-@router.post("", response_model=UserOut, status_code=201)
+@router.post("", response_model=UserCreatedOut, status_code=201)
 def create_user(
     request: Request,
     user_in: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    if db.query(User).filter(User.username == user_in.username).first():
+    """Create a user. When no password is supplied, the system generates a
+    username and a credential-combination password and emails them to the
+    user's address."""
+    username = user_in.username.strip() if user_in.username else generate_username(
+        user_in.full_name, user_in.email, db
+    )
+    if db.query(User).filter(User.username == username).first():
         raise HTTPException(
             status_code=409,
             detail="Username already taken.",
@@ -38,25 +45,44 @@ def create_user(
             status_code=409,
             detail="Email already registered.",
         )
+
+    if user_in.password:
+        password = user_in.password
+    else:
+        password = generate_credential_password(
+            full_name=user_in.full_name,
+            id_number=user_in.id_number,
+            contact_number=user_in.contact_number,
+            email=user_in.email,
+        )
+
     user = User(
-        username=user_in.username,
+        username=username,
         email=user_in.email,
-        password_hash=get_password_hash(user_in.password),
+        password_hash=get_password_hash(password),
         full_name=user_in.full_name,
         role=user_in.role,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    sent = send_account_credentials_email(user.email, username, password, user.full_name)
     log_audit_action(
         db,
         "CREATE",
         current_user.user_id,
         "User",
         user.user_id,
+        new_value={"role": user.role, "credentials_emailed": sent},
         ip_address=get_client_ip(request),
     )
-    return user
+
+    result = UserOut.model_validate(user, from_attributes=True).model_dump()
+    result["credentials_sent"] = sent
+    if not sent:
+        result["dev_password"] = password
+    return result
 
 
 @router.get("/{user_id}", response_model=UserOut)
