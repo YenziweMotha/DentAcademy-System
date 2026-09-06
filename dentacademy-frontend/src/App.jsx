@@ -141,6 +141,15 @@ function App() {
           />
 
           <Route
+            path="/apprentices/:apprenticeId/register"
+            element={
+              <ProtectedRoute allowedRoles={staff}>
+                <ApprenticeCreate />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/apprentices/:apprenticeId"
             element={
               <ProtectedRoute allowedRoles={staff}>

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/ui/Spinner';
+import { SkeletonCard } from '../../components/ui/Skeleton';
 
 const PROVINCES = [
   'Limpopo', 'Gauteng', 'Mpumalanga', 'North West',
@@ -13,6 +14,11 @@ export default function ApprenticeCreate() {
   const navigate = useNavigate();
   const toast = useToast();
 
+  // With an apprenticeId in the URL the page completes the registration of a
+  // placeholder created with an Apprentice login account on the Users page.
+  const { apprenticeId } = useParams();
+  const completing = Boolean(apprenticeId);
+
   const [formData, setFormData] = useState({
     first_name: '',
     surname: '',
@@ -20,6 +26,7 @@ export default function ApprenticeCreate() {
     date_of_birth: '',
     gender: '',
     contact_number: '',
+    email: '',
     address_line1: '',
     city: '',
     province: '',
@@ -31,6 +38,62 @@ export default function ApprenticeCreate() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [loading, setLoading] = useState(completing);
+  const [maskedId, setMaskedId] = useState('');
+  const [hasEducation, setHasEducation] = useState(false);
+
+  useEffect(() => {
+    if (!completing) return;
+
+    api
+      .get(`/api/apprentices/${apprenticeId}`)
+      .then(({ data }) => {
+        setFormData((prev) => ({
+          ...prev,
+          first_name: data.first_name || '',
+          surname: data.surname || '',
+          date_of_birth: data.date_of_birth || '',
+          gender: data.gender || '',
+          contact_number: data.contact_number || '',
+          email: data.email || '',
+          address_line1: data.address_line1 || '',
+          city: data.city || '',
+          province: data.province || '',
+          qualification_type: data.qualification_type || '',
+          institution_name: data.institution || '',
+        }));
+        setMaskedId(data.id_number || '');
+        setHasEducation(Boolean(data.qualification_type));
+        if (data.qualification_type) {
+          // Keep any subjects already captured, so saving does not drop them.
+          api
+            .get(`/api/apprentices/${apprenticeId}/education`)
+            .then(({ data: edu }) => {
+              if (edu.subjects?.length) {
+                setFormData((prev) => ({
+                  ...prev,
+                  subjects: edu.subjects.map((s) => ({
+                    subject: s.subject ?? s.subject_name ?? '',
+                    mark: String(s.mark ?? ''),
+                  })),
+                }));
+              }
+            })
+            .catch(() => {});
+        }
+        if (data.is_registered) {
+          setFormError(
+            'This apprentice is already registered. Use Edit to change their details.'
+          );
+        }
+      })
+      .catch((err) => {
+        setFormError(
+          err.response?.data?.detail || 'Failed to load the apprentice record.'
+        );
+      })
+      .finally(() => setLoading(false));
+  }, [apprenticeId, completing]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -61,15 +124,20 @@ export default function ApprenticeCreate() {
     const next = {};
     if (!formData.first_name.trim()) next.first_name = 'First name is required.';
     if (!formData.surname.trim()) next.surname = 'Surname is required.';
-    if (!/^\d{13}$/.test(formData.id_number.trim())) {
-      next.id_number = 'ID number must be exactly 13 digits.';
-    } else {
-      const dob = formData.id_number.slice(0, 6);
-      const month = Number(dob.slice(2, 4));
-      const day = Number(dob.slice(4, 6));
-      if (month < 1 || month > 12 || day < 1 || day > 31) {
-        next.id_number = 'ID number contains an invalid date of birth.';
+    if (!completing) {
+      if (!/^\d{13}$/.test(formData.id_number.trim())) {
+        next.id_number = 'ID number must be exactly 13 digits.';
+      } else {
+        const dob = formData.id_number.slice(0, 6);
+        const month = Number(dob.slice(2, 4));
+        const day = Number(dob.slice(4, 6));
+        if (month < 1 || month > 12 || day < 1 || day > 31) {
+          next.id_number = 'ID number contains an invalid date of birth.';
+        }
       }
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      next.email = 'A valid email is required — login credentials are emailed to it.';
     }
     if (formData.qualification_type && !formData.institution_name.trim()) {
       next.institution_name = 'Institution is required when qualification is given.';
@@ -89,35 +157,46 @@ export default function ApprenticeCreate() {
       const payload = {
         first_name: formData.first_name.trim(),
         surname: formData.surname.trim(),
-        id_number: formData.id_number.trim(),
         date_of_birth: formData.date_of_birth || undefined,
         gender: formData.gender || undefined,
         contact_number: formData.contact_number || undefined,
+        email: formData.email.trim(),
         address_line1: formData.address_line1 || undefined,
         city: formData.city || undefined,
         province: formData.province || undefined,
       };
 
-      const res = await api.post('/api/apprentices', payload);
-      const apprenticeId = res.data.apprentice_id;
+      const res = completing
+        ? await api.post(`/api/apprentices/${apprenticeId}/registration`, payload)
+        : await api.post('/api/apprentices', { ...payload, id_number: formData.id_number.trim() });
+      const newId = res.data.apprentice_id;
 
       if (formData.qualification_type) {
-        const subjects = formData.subjects
-          .filter((s) => s.subject.trim() !== '' && s.mark !== '')
-          .map((s) => ({ subject: s.subject.trim(), mark: Number(s.mark) }));
-
-        await api.post(`/api/apprentices/${apprenticeId}/education`, {
+        const education = {
           qualification_type: formData.qualification_type,
           institution_name: formData.institution_name.trim(),
-          subjects: subjects.length ? subjects : undefined,
-        });
+          subjects: formData.subjects
+            .filter((s) => s.subject.trim() !== '' && s.mark !== '')
+            .map((s) => ({ subject: s.subject.trim(), mark: Number(s.mark) })),
+        };
+        if (!education.subjects.length) delete education.subjects;
+
+        if (hasEducation) {
+          await api.put(`/api/apprentices/${newId}/education`, education);
+        } else {
+          await api.post(`/api/apprentices/${newId}/education`, education);
+        }
       }
 
-      navigate(`/apprentices/${apprenticeId}`);
-      toast.success('Apprentice registered successfully.');
+      navigate(`/apprentices/${newId}`);
+      toast.success(
+        completing
+          ? 'Registration completed successfully.'
+          : 'Apprentice registered successfully.'
+      );
     } catch (err) {
-      console.error('Failed to create apprentice:', err);
-      setFormError(err.response?.data?.detail || 'Failed to create apprentice.');
+      console.error('Failed to register apprentice:', err);
+      setFormError(err.response?.data?.detail || 'Failed to register apprentice.');
     } finally {
       setSubmitting(false);
     }
@@ -126,12 +205,20 @@ export default function ApprenticeCreate() {
   const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
   const label = 'block text-sm font-medium text-gray-700 mb-1';
 
+  if (loading) {
+    return <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>;
+  }
+
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Register Apprentice</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">
+          {completing ? 'Complete Registration' : 'Register Apprentice'}
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Capture personal details and optional academic information.
+          {completing
+            ? 'This apprentice has a login account but is not registered yet. Capture their remaining details to complete registration.'
+            : 'Capture personal details and optional academic information.'}
         </p>
       </div>
 
@@ -158,12 +245,23 @@ export default function ApprenticeCreate() {
 
             <div>
               <label className={label}>ID Number (13 digits) *</label>
-              <input
-                className={input}
-                value={formData.id_number}
-                onChange={(e) => handleChange('id_number', e.target.value.replace(/\D/g, '').slice(0, 13))}
-              />
-              {errors.id_number && <p className="text-red-500 text-sm mt-1">{errors.id_number}</p>}
+              {completing ? (
+                <>
+                  <input className={`${input} bg-gray-100`} value={maskedId} disabled />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Captured with the login account and cannot be changed here.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <input
+                    className={input}
+                    value={formData.id_number}
+                    onChange={(e) => handleChange('id_number', e.target.value.replace(/\D/g, '').slice(0, 13))}
+                  />
+                  {errors.id_number && <p className="text-red-500 text-sm mt-1">{errors.id_number}</p>}
+                </>
+              )}
             </div>
 
             <div>
@@ -184,6 +282,22 @@ export default function ApprenticeCreate() {
             <div>
               <label className={label}>Contact Number</label>
               <input className={input} value={formData.contact_number} onChange={(e) => handleChange('contact_number', e.target.value)} />
+            </div>
+
+            <div>
+              <label className={label}>Email *</label>
+              <input
+                type="email"
+                className={input}
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {completing
+                  ? 'The address on their login account. Changing it updates the apprentice record.'
+                  : 'A login account is created automatically and credentials are emailed here.'}
+              </p>
+              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -265,6 +379,8 @@ export default function ApprenticeCreate() {
               <span className="inline-flex items-center gap-2">
                 <Spinner size="sm" /> Registering...
               </span>
+            ) : completing ? (
+              'Complete Registration'
             ) : (
               'Register Apprentice'
             )}

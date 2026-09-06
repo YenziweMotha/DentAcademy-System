@@ -103,6 +103,22 @@ export default function ApprenticeDetail() {
 
   return (
     <div className="space-y-6">
+      {apprentice.is_registered === false && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-md flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <p className="text-sm">
+            This apprentice has a login account but their registration is not
+            complete. Personal and academic details are still missing.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(`/apprentices/${apprenticeId}/register`)}
+            className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 whitespace-nowrap"
+          >
+            Complete registration
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">

@@ -30,6 +30,9 @@ class Apprentice(Base):
         default="ACTIVE", nullable=False
     )
     is_synthetic = Column(Boolean, default=False, nullable=False)
+    # NULL while the record is a placeholder created alongside a login account;
+    # set once the full registration form has been completed.
+    registered_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

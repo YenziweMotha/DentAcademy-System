@@ -198,9 +198,27 @@ export default function ApprenticeList() {
                       >
                         {apprentice.status}
                       </span>
+                      {apprentice.is_registered === false && (
+                        <span className="mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                          Registration pending
+                        </span>
+                      )}
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
+                        {apprentice.is_registered === false && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/apprentices/${apprentice.apprentice_id}/register`
+                              )
+                            }
+                            className="text-amber-700 font-medium hover:underline text-sm"
+                          >
+                            Complete registration
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() =>

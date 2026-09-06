@@ -78,6 +78,8 @@ class UserCreatedOut(UserOut):
     development when SMTP is not configured, so admins can relay them."""
     credentials_sent: bool = False
     dev_password: Optional[str] = None
+    apprentice_id: Optional[int] = None
+    mentor_id: Optional[int] = None
 
 
 class PasswordChange(BaseModel):
