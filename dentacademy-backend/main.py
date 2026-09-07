@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import IntegrityError
 from routers import (
@@ -43,12 +44,17 @@ app = FastAPI(
 # CORS (env-driven single or multi origin)
 # ------------------------------------------------------------------
 
+def _default_frontend_origin() -> str:
+    # Render injects RENDER_EXTERNAL_URL (https://….onrender.com) for free/paid web services.
+    render_url = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if render_url:
+        return render_url
+    return os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+
 CORS_ORIGINS = [
     o.strip()
-    for o in os.getenv(
-        "CORS_ORIGINS",
-        os.getenv("FRONTEND_URL", "http://localhost:3000"),
-    ).split(",")
+    for o in os.getenv("CORS_ORIGINS", _default_frontend_origin()).split(",")
     if o.strip()
 ]
 
@@ -122,3 +128,23 @@ app.include_router(predictions_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
 app.include_router(config_router)
+
+
+# ------------------------------------------------------------------
+# Startup: ensure tables + optional one-time seed (env driven)
+# ------------------------------------------------------------------
+
+@app.on_event("startup")
+async def on_startup():
+    import startup
+
+    startup.run_startup()
+
+
+# ------------------------------------------------------------------
+# Static SPA (built frontend) served from FastAPI in production
+# ------------------------------------------------------------------
+
+_DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+if os.path.isdir(_DIST_DIR):
+    app.mount("/", StaticFiles(directory=_DIST_DIR, html=True), name="spa")

@@ -55,7 +55,7 @@ export default function MentorDashboard() {
               <h2 className="text-gray-500 text-sm font-medium uppercase">
                 Average Completion
               </h2>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-3xl font-bold text-brand mt-2">
                 {avgCompletion}%
               </p>
               <div className="mt-3">

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { useToast } from '../../context/ToastContext';
+import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
 
 export default function SystemSettings() {
+  const toast = useToast();
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,8 +45,12 @@ export default function SystemSettings() {
       const res = await api.put('/api/config', { settings: payload });
       setSettings(res.data);
       setSaved(true);
+      toast.success('System settings saved.');
     } catch (err) {
       setError(
+        err.response?.data?.detail || 'Failed to save system settings.'
+      );
+      toast.error(
         err.response?.data?.detail || 'Failed to save system settings.'
       );
     } finally {
@@ -87,7 +94,7 @@ export default function SystemSettings() {
         className="bg-white rounded-lg shadow p-6 space-y-6"
       >
         {loading ? (
-          <div className="text-gray-500">Loading settings...</div>
+          <SkeletonCard lines={4} />
         ) : (
           settings.map((setting) => (
             <div key={setting.key}>
@@ -105,7 +112,7 @@ export default function SystemSettings() {
                 onChange={(e) =>
                   handleChange(setting.key, e.target.value)
                 }
-                className="mt-1 w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mt-1 w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
               />
               <p className="text-sm text-gray-500 mt-1">
                 {setting.description}
@@ -118,7 +125,7 @@ export default function SystemSettings() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-brand text-white px-5 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>

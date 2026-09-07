@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, EmailStr
 from typing import Optional, List, Any
 from datetime import date, datetime
 
@@ -47,6 +47,7 @@ class ApprenticeCreate(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     address_line1: Optional[str] = None
     city: Optional[str] = None
     province: Optional[str] = None
@@ -81,12 +82,51 @@ class ApprenticeCreate(BaseModel):
         return v
 
 
+class ApprenticeRegister(BaseModel):
+    """Completes a placeholder apprentice created with a login account.
+
+    The national ID is already on the record, so it is not re-captured.
+    """
+    first_name: str
+    surname: str
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
+    address_line1: Optional[str] = None
+    city: Optional[str] = None
+    province: Optional[str] = None
+
+    @field_validator("first_name", "surname")
+    @classmethod
+    def validate_required_names(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Name fields cannot be blank")
+        return v
+
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v):
+        if v and v not in {"Male", "Female", "Other"}:
+            raise ValueError("Gender must be Male, Female, or Other")
+        return v
+
+    @field_validator("contact_number")
+    @classmethod
+    def validate_contact_number(cls, v):
+        if v and (not v.isdigit() or len(v) not in (10, 11, 12)):
+            raise ValueError("Contact number must be 10-12 digits")
+        return v
+
+
 class ApprenticeUpdate(BaseModel):
     first_name: Optional[str] = None
     surname: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     address_line1: Optional[str] = None
     city: Optional[str] = None
     province: Optional[str] = None
@@ -131,6 +171,8 @@ class ApprenticeOut(BaseModel):
     qualification_type: Optional[str] = None
     institution: Optional[str] = None
     completion_pct: Optional[float] = None
+    registered_at: Optional[datetime] = None
+    is_registered: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -157,6 +199,7 @@ class ApprenticeDetailOut(BaseModel):
     id_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     address_line1: Optional[str] = None
+    email: Optional[str] = None
     user_id: Optional[int] = None
     qualification_type: Optional[str] = None
     institution: Optional[str] = None
@@ -164,6 +207,8 @@ class ApprenticeDetailOut(BaseModel):
     module_count: Optional[int] = None
     completed_modules: Optional[int] = None
     latest_evaluation: Optional[dict] = None
+    registered_at: Optional[datetime] = None
+    is_registered: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -180,3 +225,7 @@ class ApprenticePaginatedOut(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class ApprenticeCreatedOut(ApprenticeDetailOut):
+    account_credentials: Optional[dict] = None

@@ -23,7 +23,13 @@ def get_apprentice_report(
 ):
     from services.report_service import generate_apprentice_pdf
 
-    pdf_path = generate_apprentice_pdf(id, db)
+    try:
+        pdf_path = generate_apprentice_pdf(id, db)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
     log_audit_action(db, "REPORT_GENERATED", current_user.user_id, "Apprentice", id)
     return FileResponse(
         pdf_path,
@@ -40,7 +46,7 @@ def get_programme_summary(
     from services.report_service import generate_summary_pdf
 
     pdf_path = generate_summary_pdf(db)
-    log_audit_action(db, "REPORT_GENERATED", current_user.user_id, "System")
+    log_audit_action(db, "REPORT_GENERATED", current_user.user_id, "System", None)
     return FileResponse(
         pdf_path,
         media_type="application/pdf",

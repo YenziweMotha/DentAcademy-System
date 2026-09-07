@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/venv
+**/__pycache__
+**/*.pyc
+dentacademy-backend/mysql_data
+dentacademy-backend/mysql_data_broken
+dentacademy-backend/mysql_data_old
+dentacademy-backend/reports_output
+dentacademy-backend/uploads
+dentacademy-backend/tests
+dentacademy-backend/.env

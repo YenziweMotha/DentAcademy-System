@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from models.apprentice import Apprentice
 from models.education import Education
 from models.module import ModuleProgress, Module
 from models.evaluation import Evaluation

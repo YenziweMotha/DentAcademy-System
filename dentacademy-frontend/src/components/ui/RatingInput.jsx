@@ -8,7 +8,7 @@ export default function RatingInput({ label, value, onChange, max = 5 }) {
             key={i}
             type="button"
             onClick={() => onChange(i + 1)}
-            className={`w-8 h-8 rounded-full border ${value >= i + 1 ? 'bg-blue-500 border-blue-500 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
+            className={`w-8 h-8 rounded-full border ${value >= i + 1 ? 'bg-brand border-brand text-white' : 'bg-white border-gray-300 text-gray-400'}`}
           >
             {i + 1}
           </button>

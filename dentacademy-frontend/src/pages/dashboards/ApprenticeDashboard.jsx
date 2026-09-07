@@ -88,7 +88,7 @@ export default function ApprenticeDashboard() {
               <h2 className="text-gray-500 text-sm font-medium uppercase">
                 In Progress
               </h2>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-3xl font-bold text-brand mt-2">
                 {data.in_progress_modules}
               </p>
             </div>

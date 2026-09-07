@@ -13,6 +13,7 @@ dist/
 mysql_data*/
 uploads/
 ml_models/
+reports_output/
 
 # Environment
 .env
@@ -38,6 +39,9 @@ id_rsa
 id_rsa.pub
 id_ed25519
 id_ed25519.pub
+# Public TLS root CAs (not secrets) — needed for TiDB Cloud on Render
+!dentacademy-backend/certs/isrg-root-x1.pem
+!dentacademy-backend/certs/tidb-ca.pem
 
 
 

@@ -27,6 +27,8 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     Base.metadata.create_all(bind=bind)
+    op.execute("DROP TRIGGER IF EXISTS audit_log_no_update")
+    op.execute("DROP TRIGGER IF EXISTS audit_log_no_delete")
     op.execute(
         "CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log "
         "FOR EACH ROW SIGNAL SQLSTATE '45000' "

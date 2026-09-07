@@ -13,12 +13,14 @@ from models.evaluation import Evaluation
 from models.prediction import AIPrediction
 from schemas.apprentice import (
     ApprenticeCreate,
+    ApprenticeRegister,
     ApprenticeUpdate,
     ApprenticeOut,
     ApprenticeDetailOut,
     EducationCreate,
     EducationOut,
-    ApprenticePaginatedOut
+    ApprenticePaginatedOut,
+    ApprenticeCreatedOut,
 )
 from middleware.auth_middleware import (
     get_current_user,
@@ -26,7 +28,13 @@ from middleware.auth_middleware import (
     require_admin_or_supervisor,
 )
 from middleware.audit_middleware import log_audit_action, get_client_ip
-from utils.security import mask_id_number
+from utils.security import (
+    mask_id_number,
+    get_password_hash,
+    generate_username,
+    generate_credential_password,
+)
+from services.email_service import send_account_credentials_email
 import os
 from datetime import datetime
 
@@ -63,12 +71,15 @@ def _enrich_apprentice_out(app: Apprentice, db: Session) -> dict:
 "id_number": mask_id_number(app.id_number),
         "gender": app.gender,
         "contact_number": app.contact_number,
+        "email": app.email,
         "city": app.city,
         "province": app.province,
         "photo_url": app.photo_url,
         "status": app.status,
         "created_at": app.created_at,
         "updated_at": app.updated_at,
+        "registered_at": app.registered_at,
+        "is_registered": app.registered_at is not None,
     }
     if app.education:
         data["qualification_type"] = app.education.qualification_type
@@ -132,12 +143,135 @@ def _sync_subjects(edu: Education, subjects: List[dict]):
     )
 
 
+def _provision_account(
+    full_name: str,
+    email: str,
+    id_number: Optional[str],
+    contact_number: Optional[str],
+    db: Session,
+):
+    """Create a login account for an apprentice and email the credentials."""
+    username = generate_username(full_name, email, db)
+    password = generate_credential_password(
+        full_name=full_name,
+        id_number=id_number,
+        contact_number=contact_number,
+        email=email,
+    )
+    user = User(
+        username=username,
+        email=email,
+        password_hash=get_password_hash(password),
+        full_name=full_name,
+        role="Apprentice",
+    )
+    db.add(user)
+    db.flush()
+    sent = send_account_credentials_email(email, username, password, full_name)
+    return user, password, sent
+
+
+def _resolve_account_for_email(
+    email: Optional[str], current_app: Optional[Apprentice], db: Session
+) -> Optional[User]:
+    """Return an existing Apprentice-role account that may be reused for this
+    email, or None. Raises 409 when the address belongs to someone else."""
+    if not email:
+        return None
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        return None
+    linked = db.query(Apprentice).filter(
+        Apprentice.user_id == user.user_id
+    ).first()
+    if user.role != "Apprentice" or (
+        linked is not None and linked is not current_app
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="A user account already exists for this email address.",
+        )
+    return user
+
+
+def _complete_registration(
+    app: Apprentice,
+    app_in,
+    existing_user: Optional[User],
+    current_user: User,
+    request: Request,
+    db: Session,
+) -> dict:
+    """Fill in a placeholder apprentice created alongside a login account."""
+    old_data = {
+        c.name: str(getattr(app, c.name)) for c in app.__table__.columns
+    }
+
+    for field in (
+        "first_name", "surname", "date_of_birth", "gender",
+        "contact_number", "email", "address_line1", "city", "province",
+    ):
+        value = getattr(app_in, field)
+        if value is not None:
+            setattr(app, field, value)
+
+    password = None
+    credentials_sent = False
+    app_user = app.user or existing_user
+
+    if app_user is None and app_in.email:
+        app_user, password, credentials_sent = _provision_account(
+            f"{app_in.first_name} {app_in.surname}",
+            app_in.email,
+            app.id_number,
+            app_in.contact_number,
+            db,
+        )
+
+    if app_user is not None:
+        app.user_id = app_user.user_id
+        app_user.full_name = f"{app_in.first_name} {app_in.surname}"
+
+    app.registered_at = datetime.utcnow()
+    app.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(app)
+
+    log_audit_action(
+        db,
+        "UPDATE",
+        current_user.user_id,
+        "Apprentice",
+        app.apprentice_id,
+        old_value=old_data,
+        new_value={
+            "registration_completed": True,
+            "names": f"{app.first_name} {app.surname}",
+            "credentials_emailed": credentials_sent,
+        },
+        ip_address=get_client_ip(request),
+    )
+
+    data = _enrich_apprentice_detail(app, db)
+    if app_user is not None:
+        data["account_credentials"] = {
+            "username": app_user.username,
+            "sent": credentials_sent,
+            "password": None if credentials_sent else password,
+            "existing_account": password is None,
+        }
+    return data
+
+
 @router.get("", response_model=ApprenticePaginatedOut)
 def list_apprentices(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    registration: Optional[str] = Query(
+        None, description="Filter by registration state: pending or complete."
+    ),
     sort_by: Optional[str] = Query("apprentice_id"),
     order: str = Query("asc"),
     db: Session = Depends(get_db),
@@ -193,6 +327,15 @@ def list_apprentices(
             raise HTTPException(400, "Invalid status. Use ACTIVE or INACTIVE.")
         q = q.filter(Apprentice.status == normalized_status)
 
+    if registration:
+        normalized_registration = registration.lower()
+        if normalized_registration == "pending":
+            q = q.filter(Apprentice.registered_at.is_(None))
+        elif normalized_registration == "complete":
+            q = q.filter(Apprentice.registered_at.isnot(None))
+        else:
+            raise HTTPException(400, "Invalid registration filter. Use pending or complete.")
+
     total = q.count()
 
     if sort_by not in {"apprentice_id", "first_name", "surname"}:
@@ -211,22 +354,50 @@ def list_apprentices(
     }
 
 
-@router.post("", response_model=ApprenticeDetailOut, status_code=201)
+@router.post("", response_model=ApprenticeCreatedOut, status_code=201)
 def create_apprentice(
     request: Request,
     app_in: ApprenticeCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Create a new apprentice. National ID must be unique."""
+    """Register an apprentice. National ID must be unique.
+
+    A placeholder record created alongside a login account on the Users page is
+    completed in place rather than rejected as a duplicate."""
     existing = db.query(Apprentice).filter(
         Apprentice.id_number == app_in.id_number
     ).first()
-    if existing:
+    if existing and existing.registered_at is not None:
         raise HTTPException(
             status_code=409,
-            detail="An apprentice with this national ID number already exists.",
+            detail="An apprentice with this national ID number is already registered.",
         )
+
+    # Reusing the account already attached to the record being completed is
+    # expected; any other match on the address is a genuine clash.
+    existing_user = _resolve_account_for_email(app_in.email, existing, db)
+
+    if existing is not None:
+        return _complete_registration(
+            existing, app_in, existing_user, current_user, request, db
+        )
+
+    # Auto-provision a login account so the apprentice can sign in and give
+    # feedback. The password is a combination of their credentials. An unlinked
+    # apprentice account created from the Users page is reused instead.
+    app_user = existing_user
+    password = None
+    credentials_sent = False
+    if app_in.email and existing_user is None:
+        app_user, password, credentials_sent = _provision_account(
+            f"{app_in.first_name} {app_in.surname}",
+            app_in.email,
+            app_in.id_number,
+            app_in.contact_number,
+            db,
+        )
+
     app = Apprentice(
         first_name=app_in.first_name,
         surname=app_in.surname,
@@ -234,9 +405,12 @@ def create_apprentice(
         date_of_birth=app_in.date_of_birth,
         gender=app_in.gender,
         contact_number=app_in.contact_number,
+        email=app_in.email,
         address_line1=app_in.address_line1,
         city=app_in.city,
         province=app_in.province,
+        user_id=app_user.user_id if app_user else None,
+        registered_at=datetime.utcnow(),
     )
     db.add(app)
     db.commit()
@@ -247,10 +421,58 @@ def create_apprentice(
         current_user.user_id,
         "Apprentice",
         app.apprentice_id,
-        new_value={"id_number": app.id_number, "names": f"{app.first_name} {app.surname}"},
+        new_value={
+            "id_number": app.id_number,
+            "names": f"{app.first_name} {app.surname}",
+            "account_created": app_user is not None and existing_user is None,
+            "account_linked": existing_user is not None,
+            "credentials_emailed": credentials_sent,
+        },
         ip_address=get_client_ip(request),
     )
-    return _enrich_apprentice_detail(app, db)
+    data = _enrich_apprentice_detail(app, db)
+    if app_user is not None:
+        data["account_credentials"] = {
+            "username": app_user.username,
+            "sent": credentials_sent,
+            "password": None if credentials_sent else password,
+            "existing_account": existing_user is not None,
+        }
+    return data
+
+
+@router.post(
+    "/{apprentice_id}/registration",
+    response_model=ApprenticeCreatedOut,
+    status_code=200,
+)
+def register_existing_apprentice(
+    apprentice_id: int,
+    request: Request,
+    app_in: ApprenticeRegister,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Complete the registration of a placeholder apprentice.
+
+    Placeholders are created when an Apprentice login account is added from the
+    Users page; this captures the remaining personal details. The national ID
+    already on the record is kept."""
+    app = db.query(Apprentice).filter(
+        Apprentice.apprentice_id == apprentice_id
+    ).first()
+    if not app:
+        raise HTTPException(404, "Apprentice not found")
+    if app.registered_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="This apprentice is already registered. Use edit to change their details.",
+        )
+
+    existing_user = _resolve_account_for_email(app_in.email, app, db)
+    return _complete_registration(
+        app, app_in, existing_user, current_user, request, db
+    )
 
 
 @router.get("/{apprentice_id}", response_model=ApprenticeDetailOut)
@@ -289,7 +511,7 @@ def update_apprentice(
     }
     for field in (
         "first_name", "surname", "date_of_birth", "gender",
-        "contact_number", "address_line1", "city", "province",
+        "contact_number", "email", "address_line1", "city", "province",
     ):
         value = getattr(app_in, field)
         if value is not None:

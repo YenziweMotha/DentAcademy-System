@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useNavigate } from 'react-router-dom';
+import { Users, UserCheck, AlertTriangle, ClipboardList } from 'lucide-react';
+import StatCard from '../../components/ui/StatCard';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 
 export default function AdminDashboard() {
   const [data, setData] = useState({
@@ -105,7 +108,7 @@ export default function AdminDashboard() {
           <button
             type="button"
             onClick={() => navigate('/dashboard/admin/users')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
           >
             Users
           </button>
@@ -113,7 +116,7 @@ export default function AdminDashboard() {
           <button
             type="button"
             onClick={() => navigate('/dashboard/admin/settings')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
           >
             Settings
           </button>
@@ -133,45 +136,33 @@ export default function AdminDashboard() {
       {/* Dashboard statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Total Apprentices
-          </h2>
+        <StatCard
+          icon={Users}
+          label="Total Apprentices"
+          value={data.total_apprentices}
+          tone="brand"
+        />
 
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {data.total_apprentices}
-          </p>
-        </div>
+        <StatCard
+          icon={UserCheck}
+          label="Active Apprentices"
+          value={data.active_apprentices}
+          tone="gray"
+        />
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Active Apprentices
-          </h2>
+        <StatCard
+          icon={AlertTriangle}
+          label="At Risk"
+          value={data.at_risk_count}
+          tone="red"
+        />
 
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {data.active_apprentices}
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            At Risk
-          </h2>
-
-          <p className="text-3xl font-bold text-red-600 mt-2">
-            {data.at_risk_count}
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Pending Evaluations
-          </h2>
-
-          <p className="text-3xl font-bold text-yellow-600 mt-2">
-            {data.pending_evaluations}
-          </p>
-        </div>
+        <StatCard
+          icon={ClipboardList}
+          label="Pending Evaluations"
+          value={data.pending_evaluations}
+          tone="yellow"
+        />
 
       </div>
 
@@ -196,7 +187,7 @@ export default function AdminDashboard() {
               value={search}
               onChange={handleSearch}
               placeholder="Search by name or ID number..."
-              className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
             />
 
           </div>
@@ -206,9 +197,7 @@ export default function AdminDashboard() {
         {/* Apprentice list */}
         {loading ? (
 
-          <div className="p-6 text-gray-500">
-            Loading apprentices...
-          </div>
+          <SkeletonTable rows={4} cols={3} />
 
         ) : apprentices.length === 0 ? (
 
@@ -254,7 +243,7 @@ export default function AdminDashboard() {
                       `/dashboard/performance/${apprentice.apprentice_id}`
                     )
                   }
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
                 >
                   View Performance
                 </button>

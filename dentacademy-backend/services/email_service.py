@@ -52,7 +52,56 @@ def send_email(to_address: str, subject: str, html_body: str, text_body: str = N
         return True
     except Exception as exc:  # noqa: BLE001 - never break the request on mail failure
         logger.error("SMTP send to %s failed: %s", to_address, exc)
+        if "535" in str(exc):
+            logger.error(
+                "Gmail rejected the credentials (535). Use an App Password, not the "
+                "normal account password: https://myaccount.google.com/apppasswords"
+            )
         return False
+
+
+def send_account_credentials_email(
+    to_address: str, username: str, password: str, full_name: str
+) -> bool:
+    """Deliver a newly created account's username and one-time password."""
+    base_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+    login_link = f"{base_url}/login"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
+      <h2 style="color: #145224;">DentAcademy — Your account is ready</h2>
+      <p>Hi {full_name},</p>
+      <p>An account has been created for you on the DentAcademy apprenticeship portal.</p>
+      <table style="border-collapse: collapse; margin: 16px 0;">
+        <tr>
+          <td style="padding:8px 12px;border:1px solid #ddd;background:#f5f5f5;font-weight:bold;">Username</td>
+          <td style="padding:8px 12px;border:1px solid #ddd;">{username}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border:1px solid #ddd;background:#f5f5f5;font-weight:bold;">Password</td>
+          <td style="padding:8px 12px;border:1px solid #ddd;">{password}</td>
+        </tr>
+      </table>
+      <p>
+        <a href="{login_link}"
+           style="background:#145224;color:#fff;padding:10px 18px;text-decoration:none;
+                  border-radius:6px;display:inline-block;">
+          Sign in now
+        </a>
+      </p>
+      <p>We strongly recommend you change your password after your first sign-in.</p>
+      <p>If you did not expect this email, please ignore it.</p>
+    </div>
+    """
+    return send_email(
+        to_address,
+        "DentAcademy — Your account credentials",
+        html,
+        text_body=(
+            f"Hi {full_name},\n\nYour DentAcademy account has been created.\n"
+            f"Username: {username}\nPassword: {password}\n\n"
+            f"Sign in at {login_link}"
+        ),
+    )
 
 
 def send_password_reset_email(to_address: str, reset_token: str) -> bool:

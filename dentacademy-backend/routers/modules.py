@@ -45,6 +45,32 @@ def create_module(
     return module
 
 
+@router.put("/{module_id}", response_model=ModuleOut)
+def update_module(
+    module_id: int,
+    request: Request,
+    module_in: ModuleCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    module = db.query(Module).filter(Module.module_id == module_id).first()
+    if not module:
+        raise HTTPException(404, "Module not found")
+    duplicate = db.query(Module).filter(
+        Module.module_name == module_in.module_name,
+        Module.module_id != module_id,
+    ).first()
+    if duplicate:
+        raise HTTPException(400, "Module name already exists")
+    for field, value in module_in.model_dump().items():
+        setattr(module, field, value)
+    db.commit()
+    db.refresh(module)
+    log_audit_action(db, "UPDATE", current_user.user_id, "Module",
+                     module.module_id, ip_address=get_client_ip(request))
+    return module
+
+
 @router.get("/apprentice/{apprentice_id}", response_model=List[ModuleProgressOut])
 def get_apprentice_progress(
     apprentice_id: int,

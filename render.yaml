@@ -1,0 +1,41 @@
+# DentAcademy — free Render Blueprint (Docker web service + external TiDB Cloud DB)
+# Dashboard: New → Blueprint → connect this repo → fill sync:false secrets.
+# After first successful login, set AUTO_SEED=0 in the Render dashboard and redeploy.
+
+services:
+  - type: web
+    name: dentacademy
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /redoc
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: AUTO_CREATE_TABLES
+        value: "1"
+      - key: DB_AUTO_CREATE
+        value: "1"
+      - key: DB_SSL_REQUIRED
+        value: "1"
+      - key: DB_SSL_CA
+        value: certs/isrg-root-x1.pem
+      - key: AUTO_SEED
+        value: "1"
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: MODEL_PATH
+        value: ai/model.pkl
+      - key: UPLOAD_DIR
+        value: uploads/photos
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRY_MINUTES
+        value: "60"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

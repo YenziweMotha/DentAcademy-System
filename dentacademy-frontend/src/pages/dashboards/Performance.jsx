@@ -1,3 +1,4 @@
+import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -9,6 +10,29 @@ export default function Performance() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadReport = async () => {
+    try {
+      setDownloading(true);
+      const response = await api.get(
+        `/api/reports/apprentice/${apprenticeId}`,
+        { responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `apprentice_${apprenticeId}_report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to generate the PDF report.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     const loadPerformance = async () => {
@@ -37,15 +61,15 @@ export default function Performance() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <p>Loading performance record...</p>
+      <div>
+        <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6">
+      <div>
         <div className="bg-red-100 text-red-700 p-4 rounded">
           {error}
         </div>
@@ -60,7 +84,7 @@ export default function Performance() {
   const { apprentice, summary, modules, evaluations, prediction } = data;
 
   return (
-    <div className="p-6">
+    <div>
 
       {/* HEADER */}
 
@@ -74,6 +98,15 @@ export default function Performance() {
           <p className="text-gray-500 mt-1">
             {apprentice.first_name} {apprentice.surname}
           </p>
+
+          <button
+            type="button"
+            onClick={downloadReport}
+            disabled={downloading}
+            className="mt-2 bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloading ? 'Generating PDF...' : 'Download PDF Report'}
+          </button>
         </div>
 
         <button

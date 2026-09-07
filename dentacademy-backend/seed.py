@@ -46,9 +46,26 @@ DATABASE_URL = os.getenv(
     "mysql+pymysql://root@localhost:3306/dentacademy_db"
 )
 
+def _tls_connect_args():
+    if "tidbcloud" in DATABASE_URL or os.getenv("DB_SSL_REQUIRED") == "1":
+        args = {
+            "ssl_verify_cert": True,
+            "ssl_verify_identity": True,
+        }
+        ca = os.getenv("DB_SSL_CA")
+        if ca:
+            args["ssl_ca"] = ca
+        if os.getenv("DB_SSL_INSECURE") == "1":
+            args["ssl_verify_cert"] = False
+            args["ssl_verify_identity"] = False
+        return args
+    return {}
+
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args=_tls_connect_args(),
 )
 
 SessionLocal = sessionmaker(
@@ -56,6 +73,18 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
+
+
+def is_tidb(engine):
+    try:
+        with engine.connect() as conn:
+            version = conn.execute(text("SELECT VERSION()")).scalar()
+            return "TiDB" in (version or "")
+    except Exception:
+        return False
+
+
+TIDB = is_tidb(engine)
 
 # ------------------------------------------------------------------
 # Reproducibility
@@ -74,12 +103,18 @@ fake = Faker("zu_ZA")
 # ------------------------------------------------------------------
 
 def drop_audit_triggers(session):
+    if TIDB:
+        print("Skipping trigger drop (TiDB does not support triggers)")
+        return
     session.execute(text("DROP TRIGGER IF EXISTS audit_log_no_update"))
     session.execute(text("DROP TRIGGER IF EXISTS audit_log_no_delete"))
     session.commit()
 
 
 def create_audit_triggers(session):
+    if TIDB:
+        print("Skipping trigger creation (TiDB does not support triggers)")
+        return
     session.execute(
         text(
             "CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log "
@@ -100,9 +135,9 @@ def create_audit_triggers(session):
 # Dataset Size
 # ------------------------------------------------------------------
 
-NUMBER_OF_APPRENTICES = 150
+NUMBER_OF_APPRENTICES = int(os.getenv("SEED_APPRENTICES", "150"))
 
-NUMBER_OF_MENTORS = 20
+NUMBER_OF_MENTORS = int(os.getenv("SEED_MENTORS", "20"))
 
 EVALUATIONS_PER_APPRENTICE = 5
 
@@ -112,13 +147,13 @@ ATTENDANCE_PERIODS = 6
 # Default Passwords
 # ------------------------------------------------------------------
 
-ADMIN_PASSWORD = "Admin@123"
+ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "Admin@123")
 
-SUPERVISOR_PASSWORD = "Super@123"
+SUPERVISOR_PASSWORD = os.getenv("SEED_SUPERVISOR_PASSWORD", "Super@123")
 
-MENTOR_PASSWORD = "Mentor@123"
+MENTOR_PASSWORD = os.getenv("SEED_MENTOR_PASSWORD", "Mentor@123")
 
-APPRENTICE_PASSWORD = "Apprent@123"
+APPRENTICE_PASSWORD = os.getenv("SEED_APPRENTICE_PASSWORD", "Apprent@123")
 
 # ------------------------------------------------------------------
 # South African First Names

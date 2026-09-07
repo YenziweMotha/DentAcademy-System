@@ -42,7 +42,6 @@ def record_attendance(
 ):
     app = db.query(Apprentice).filter(
         Apprentice.apprentice_id == att_in.apprentice_id,
-        Apprentice.is_synthetic == False,
     ).first()
     if not app:
         raise HTTPException(404, "Apprentice not found")

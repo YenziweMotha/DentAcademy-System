@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { getAtRiskApprentices } from '../../api/predictions';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../context/ToastContext';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 
 export default function Reports() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const toast = useToast();
 
   // ---------------------------------------------------------
   // STATE
@@ -30,6 +35,34 @@ export default function Reports() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState(false);
+
+  // ---------------------------------------------------------
+  // PDF DOWNLOAD
+  // ---------------------------------------------------------
+
+  const downloadSummary = async () => {
+    try {
+      setDownloading(true);
+      setError('');
+      const response = await api.get('/api/reports/programme-summary', {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'programme_summary.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Summary report downloaded.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to generate the PDF report.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // ---------------------------------------------------------
   // PAGINATION
@@ -51,12 +84,14 @@ export default function Reports() {
 
       const skip = (currentPage - 1) * limit;
 
+      const isSupervisor = user?.role === 'Supervisor';
+
       const [
         dashboardResponse,
         apprenticesResponse,
         atRiskResponse,
       ] = await Promise.all([
-        api.get('/api/dashboard/admin'),
+        api.get(isSupervisor ? '/api/dashboard/supervisor' : '/api/dashboard/admin'),
 
         api.get('/api/apprentices', {
           params: {
@@ -74,10 +109,14 @@ export default function Reports() {
 
       setDashboard({
         total_apprentices:
-          dashboardResponse.data?.total_apprentices ?? 0,
+          dashboardResponse.data?.total_apprentices ??
+          dashboardResponse.data?.apprentice_list?.length ??
+          0,
 
         active_apprentices:
-          dashboardResponse.data?.active_apprentices ?? 0,
+          dashboardResponse.data?.active_apprentices ??
+          dashboardResponse.data?.apprentice_list?.length ??
+          0,
 
         at_risk_count:
           dashboardResponse.data?.at_risk_count ?? 0,
@@ -86,7 +125,9 @@ export default function Reports() {
           dashboardResponse.data?.avg_completion_pct ?? 0,
 
         pending_evaluations:
-          dashboardResponse.data?.pending_evaluations ?? 0,
+          dashboardResponse.data?.pending_evaluations ??
+          dashboardResponse.data?.pending_approvals ??
+          0,
       });
 
       // -----------------------------------------------------
@@ -340,16 +381,29 @@ export default function Reports() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => loadReports(page)}
-          disabled={loading}
-          className="mt-4 md:mt-0 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading
-            ? 'Refreshing...'
-            : 'Refresh'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+          <button
+            type="button"
+            onClick={() => loadReports(page)}
+            disabled={loading}
+            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading
+              ? 'Refreshing...'
+              : 'Refresh'}
+          </button>
+
+          <button
+            type="button"
+            onClick={downloadSummary}
+            disabled={downloading}
+            className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloading
+              ? 'Generating...'
+              : 'Download Summary PDF'}
+          </button>
+        </div>
 
       </div>
 
@@ -436,7 +490,7 @@ export default function Reports() {
             Avg Completion
           </p>
 
-          <p className="text-3xl font-bold text-blue-600 mt-2">
+          <p className="text-3xl font-bold text-brand mt-2">
             {dashboard.avg_completion_pct}%
           </p>
 
@@ -487,7 +541,7 @@ export default function Reports() {
                 setSearch(e.target.value)
               }
               placeholder="Search by name or ID number..."
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
             />
 
           </div>
@@ -510,7 +564,7 @@ export default function Reports() {
               onChange={(e) =>
                 setFilter(e.target.value)
               }
-              className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
             >
 
               <option value="All">
@@ -564,9 +618,7 @@ export default function Reports() {
 
         {loading ? (
 
-          <div className="p-6 text-gray-500">
-            Loading reports...
-          </div>
+          <SkeletonTable rows={6} cols={5} />
 
         ) : filteredApprentices.length === 0 ? (
 
@@ -716,7 +768,7 @@ export default function Reports() {
                             <div className="w-32 bg-gray-200 rounded-full h-2 overflow-hidden">
 
                               <div
-                                className="bg-blue-600 h-2 rounded-full"
+                                className="bg-brand h-2 rounded-full"
                                 style={{
                                   width: `${Math.min(
                                     Math.max(
@@ -791,7 +843,7 @@ export default function Reports() {
                                 `/dashboard/performance/${apprentice.apprentice_id}`
                               )
                             }
-                            className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                            className="bg-brand text-white px-3 py-2 rounded-md text-sm hover:bg-brand-dark transition-colors"
                           >
 
                             View Report

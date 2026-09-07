@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { getAtRiskApprentices } from '../../api/predictions';
 import AlertBanner from '../../components/ui/AlertBanner';
+import StatCard from '../../components/ui/StatCard';
+import { ClipboardList, Users, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function SupervisorDashboard() {
@@ -121,7 +123,7 @@ export default function SupervisorDashboard() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
 
       {/* Header */}
       <div className="mb-6">
@@ -147,45 +149,33 @@ export default function SupervisorDashboard() {
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Pending Evaluations
-          </h2>
+        <StatCard
+          icon={ClipboardList}
+          label="Pending Evaluations"
+          value={data.pending_evaluations}
+          tone="yellow"
+        />
 
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {data.pending_evaluations}
-          </p>
-        </div>
+        <StatCard
+          icon={Users}
+          label="Total Apprentices"
+          value={total}
+          tone="gray"
+        />
 
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Total Apprentices
-          </h2>
+        <StatCard
+          icon={TrendingUp}
+          label="Average Completion"
+          value={`${data.avg_completion_pct}%`}
+          tone="brand"
+        />
 
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {total}
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            Average Completion
-          </h2>
-
-          <p className="text-3xl font-bold text-green-600 mt-2">
-            {data.avg_completion_pct}%
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-          <h2 className="text-gray-500 text-sm font-medium uppercase">
-            At Risk
-          </h2>
-
-          <p className="text-3xl font-bold text-red-600 mt-2">
-            {data.at_risk_count}
-          </p>
-        </div>
+        <StatCard
+          icon={AlertTriangle}
+          label="At Risk"
+          value={data.at_risk_count}
+          tone="red"
+        />
 
       </div>
 
@@ -228,7 +218,7 @@ export default function SupervisorDashboard() {
                         `/dashboard/performance/${apprentice.apprentice_id}`
                       )
                     }
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
                   >
                     View Performance
                   </button>
@@ -263,12 +253,12 @@ export default function SupervisorDashboard() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by name or ID number..."
-              className="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
             />
 
             <button
               type="submit"
-              className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700"
+              className="bg-brand text-white px-5 py-2 rounded-md hover:bg-brand-dark"
             >
               Search
             </button>
@@ -341,7 +331,7 @@ export default function SupervisorDashboard() {
                       `/dashboard/performance/${apprentice.apprentice_id}`
                     )
                   }
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
                 >
                   View Performance
                 </button>
