@@ -60,9 +60,16 @@ CORS_ORIGINS = [
     if o.strip()
 ]
 
+# Allow Cloudflare quick-tunnel frontends (and localhost) when calling the API tunnel.
+_CORS_ORIGIN_REGEX = os.getenv(
+    "CORS_ORIGIN_REGEX",
+    r"https://.*\.trycloudflare\.com",
+).strip() or None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=_CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
