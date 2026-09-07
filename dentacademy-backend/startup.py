@@ -5,6 +5,11 @@ logger = logging.getLogger("dentacademy.startup")
 
 
 def run_startup():
+    # Same-origin deploy on Render: password-reset / OpenRouter site URL
+    # without requiring FRONTEND_URL to be set manually.
+    if not os.getenv("FRONTEND_URL") and os.getenv("RENDER_EXTERNAL_URL"):
+        os.environ["FRONTEND_URL"] = os.environ["RENDER_EXTERNAL_URL"].rstrip("/")
+
     from database import Base, engine
 
     # Import ALL models so SQLAlchemy registers them on Base.metadata

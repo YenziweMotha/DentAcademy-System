@@ -44,12 +44,17 @@ app = FastAPI(
 # CORS (env-driven single or multi origin)
 # ------------------------------------------------------------------
 
+def _default_frontend_origin() -> str:
+    # Render injects RENDER_EXTERNAL_URL (https://….onrender.com) for free/paid web services.
+    render_url = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if render_url:
+        return render_url
+    return os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+
 CORS_ORIGINS = [
     o.strip()
-    for o in os.getenv(
-        "CORS_ORIGINS",
-        os.getenv("FRONTEND_URL", "http://localhost:3000"),
-    ).split(",")
+    for o in os.getenv("CORS_ORIGINS", _default_frontend_origin()).split(",")
     if o.strip()
 ]
 
