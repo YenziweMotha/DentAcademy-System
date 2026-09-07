@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import Avatar from '../../components/ui/Avatar';
+import SearchBar from '../../components/ui/SearchBar';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
+import { Plus, RefreshCw } from 'lucide-react';
 
 export default function Users() {
   const toast = useToast();
@@ -126,6 +136,7 @@ export default function Users() {
         password: res.data.dev_password || null,
         credentialsSent: res.data.credentials_sent,
         apprenticeId: res.data.apprentice_id || null,
+        apprenticeRegistered: res.data.apprentice_registered ?? null,
         mentorId: res.data.mentor_id || null,
       });
       toast.success('User created successfully.');
@@ -139,64 +150,53 @@ export default function Users() {
   };
 
   return (
-    <div>
+    <div className="page-shell">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Users
-          </h1>
-
-          <p className="text-sm text-gray-500 mt-1">
-            Manage DentAcademy system users and their roles.
-          </p>
-        </div>
-
-        <div className="flex gap-3 mt-4 md:mt-0">
-          <button
+      <PageHeader title="Users" subtitle="Manage DentAcademy system users and their roles." actions={<>
+          <Button
             type="button"
             onClick={loadUsers}
-            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
+            variant="secondary"
+            icon={RefreshCw}
           >
             Refresh
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={openCreateModal}
-            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
+            icon={Plus}
           >
-            + Create User
-          </button>
-        </div>
-      </div>
+            Create User
+          </Button>
+        </>} />
 
       {/* Search and filter */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
+      <Card className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-ink mb-2">
               Search users
             </label>
 
-            <input
-              type="text"
+            <SearchBar
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onSubmit={(e) => e.preventDefault()}
+              onClear={() => setSearch('')}
               placeholder="Search by username, name or email..."
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-ink mb-2">
               Filter by role
             </label>
 
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full border border-line rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
             >
               <option value="All">All Roles</option>
               <option value="Administrator">Administrator</option>
@@ -207,49 +207,45 @@ export default function Users() {
           </div>
 
         </div>
-      </div>
+      </Card>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
-          {error}
-        </div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
       {/* Users table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card padding={false} className="overflow-hidden">
 
         {loading ? (
-          <div className="p-6 text-gray-500">
+          <div className="p-6 text-ink-muted">
             <SkeletonTable rows={4} cols={5} />
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-6 text-gray-500">
-            No users found.
-          </div>
+          <EmptyState title="No users found" description="Try changing the search or role filter." action={<Button onClick={openCreateModal} icon={Plus}>Create User</Button>} />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full">
 
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-surface-muted/60 border-b">
                 <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-ink-muted uppercase">
                     User
                   </th>
 
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-ink-muted uppercase">
                     Email
                   </th>
 
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-ink-muted uppercase">
                     Role
                   </th>
 
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-ink-muted uppercase">
                     Status
                   </th>
 
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                  <th className="text-right px-6 py-3 text-xs font-medium text-ink-muted uppercase">
                     Action
                   </th>
                 </tr>
@@ -258,38 +254,22 @@ export default function Users() {
               <tbody className="divide-y">
 
                 {filteredUsers.map((user) => (
-                  <tr key={user.user_id} className="hover:bg-gray-50">
+                  <tr key={user.user_id} className="hover:bg-surface-muted/60">
 
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-800">
-                        {user.full_name || user.username}
-                      </div>
-
-                      <div className="text-sm text-gray-500">
-                        @{user.username}
-                      </div>
+                      <div className="flex items-center gap-3"><Avatar name={user.full_name || user.username} /><div><div className="font-medium text-ink">{user.full_name || user.username}</div><div className="meta-text">@{user.username}</div></div></div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-6 py-4 text-sm text-ink-muted">
                       {user.email}
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {user.role}
-                      </span>
+                      <Badge text={user.role} color="blue" />
                     </td>
 
                     <td className="px-6 py-4">
-                      {user.is_active ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                          Inactive
-                        </span>
-                      )}
+                      <StatusBadge status={user.is_active ? 'ACTIVE' : 'INACTIVE'} />
                     </td>
 
                     <td className="px-6 py-4 text-right">
@@ -316,30 +296,17 @@ export default function Users() {
           </div>
         )}
 
-      </div>
+      </Card>
 
       {/* Count */}
       {!loading && (
-        <p className="text-sm text-gray-500 mt-4">
+        <p className="text-sm text-ink-muted mt-4">
           Showing {filteredUsers.length} of {users.length} users
         </p>
       )}
 
       {/* Create User modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">Create User</h2>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                aria-label="Close"
-              >
-                &times;
-              </button>
-            </div>
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create User">
 
             {createdCredentials ? (
               <div className="p-6 space-y-4">
@@ -348,7 +315,10 @@ export default function Users() {
                   {createdCredentials.apprenticeId && (
                     <span className="block mt-1 text-sm">
                       Apprentice profile #{createdCredentials.apprenticeId} is linked to this
-                      account, but their registration is not complete yet.
+                      account
+                      {createdCredentials.apprenticeRegistered
+                        ? '.'
+                        : ', but their registration is not complete yet.'}
                     </span>
                   )}
                   {createdCredentials.mentorId && (
@@ -357,23 +327,24 @@ export default function Users() {
                     </span>
                   )}
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                  <p className="text-sm text-gray-600">Username</p>
-                  <p className="font-mono font-semibold text-gray-900">{createdCredentials.username}</p>
+                <div className="bg-surface-muted/60 border border-line rounded-md p-4">
+                  <p className="text-sm text-ink-muted">Username</p>
+                  <p className="font-mono font-semibold text-ink">{createdCredentials.username}</p>
                   {createdCredentials.password && (
                     <>
-                      <p className="text-sm text-gray-600 mt-3">Password (development — email not configured)</p>
-                      <p className="font-mono font-semibold text-gray-900">{createdCredentials.password}</p>
+                      <p className="text-sm text-ink-muted mt-3">Password (development — email not configured)</p>
+                      <p className="font-mono font-semibold text-ink">{createdCredentials.password}</p>
                     </>
                   )}
                   {createdCredentials.credentialsSent && (
-                    <p className="text-sm text-gray-500 mt-3">
+                    <p className="text-sm text-ink-muted mt-3">
                       A password has been emailed to the user.
                     </p>
                   )}
                 </div>
                 <div className="flex justify-end gap-3">
-                  {createdCredentials.apprenticeId && (
+                  {createdCredentials.apprenticeId &&
+                    !createdCredentials.apprenticeRegistered && (
                     <button
                       type="button"
                       onClick={() =>
@@ -402,36 +373,36 @@ export default function Users() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                  <label className="block text-sm font-medium text-ink mb-1">Full Name *</label>
                   <input
                     type="text"
                     required
                     value={newUser.full_name}
                     onChange={(e) => handleCreateChange('full_name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                    className="w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-ink mb-1">Email *</label>
                   <input
                     type="email"
                     required
                     value={newUser.email}
                     onChange={(e) => handleCreateChange('email', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                    className="w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-ink-muted mt-1">
                     Login credentials are emailed to this address.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                  <label className="block text-sm font-medium text-ink mb-1">Role *</label>
                   <select
                     value={newUser.role}
                     onChange={(e) => handleCreateChange('role', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+                    className="w-full border border-line rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
                   >
                     <option value="Administrator">Administrator</option>
                     <option value="Supervisor">Supervisor</option>
@@ -441,7 +412,7 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-ink mb-1">
                     ID Number {newUser.role === 'Apprentice' && '*'}
                   </label>
                   <input
@@ -449,10 +420,10 @@ export default function Users() {
                     required={newUser.role === 'Apprentice'}
                     value={newUser.id_number}
                     onChange={(e) => handleCreateChange('id_number', e.target.value.replace(/\D/g, '').slice(0, 13))}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                    className="w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                   {newUser.role === 'Apprentice' && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                       13 digits. An apprentice record is created with this ID, or the
                       existing apprentice with this ID is linked to the new account.
                     </p>
@@ -460,16 +431,16 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                  <label className="block text-sm font-medium text-ink mb-1">Contact Number</label>
                   <input
                     type="text"
                     value={newUser.contact_number}
                     onChange={(e) => handleCreateChange('contact_number', e.target.value.replace(/\D/g, ''))}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                    className="w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
 
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-ink-muted">
                   When no password is supplied, the system generates a secure
                   password from the user's credentials and emails the username
                   and password to them.
@@ -479,7 +450,7 @@ export default function Users() {
                   <button
                     type="button"
                     onClick={() => setShowCreate(false)}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
+                    className="bg-surface-muted text-ink px-4 py-2 rounded-md hover:bg-surface-muted"
                   >
                     Cancel
                   </button>
@@ -493,9 +464,7 @@ export default function Users() {
                 </div>
               </form>
             )}
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

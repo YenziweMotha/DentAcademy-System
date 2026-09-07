@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Avatar from '../../components/ui/Avatar';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
+import { Plus } from 'lucide-react';
 
 export default function Mentors() {
   const toast = useToast();
@@ -131,55 +138,46 @@ export default function Mentors() {
     return list.map((a) => `Apprentice #${a.apprentice_id}`).join(', ') || 'None';
   };
 
-  const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
+  const input = 'w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
+  const label = 'block text-sm font-medium text-ink mb-1';
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Mentors</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Create mentor profiles from mentor users and assign apprentices.
-          </p>
-        </div>
-
-        <button type="button" onClick={() => setShowCreate(true)} className="mt-4 md:mt-0 bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark">
+    <div className="page-shell">
+      <PageHeader title="Mentors" subtitle="Create mentor profiles from mentor users and assign apprentices." actions={
+        <Button type="button" onClick={() => setShowCreate(true)} icon={Plus}>
           Add Mentor
-        </button>
-      </div>
+        </Button>} />
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+        <AlertBanner type="error" message={error} className="mb-6" onDismiss={() => setError('')} />
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <Card padding={false}>
         {loading ? (
           <SkeletonTable rows={4} cols={6} />
         ) : mentors.length === 0 ? (
-          <div className="p-6 text-gray-500">No mentor profiles created yet.</div>
+          <EmptyState title="No mentor profiles" description="Create a mentor profile from an existing mentor user." action={<Button onClick={() => setShowCreate(true)} icon={Plus}>Add Mentor</Button>} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-surface-muted/60">
                 <tr>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Mentor</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Specialisation</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Apprentices</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Mentor</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Specialisation</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Contact</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Assigned Apprentices</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-line">
                 {mentors.map((mentor) => (
                   <tr key={mentor.mentor_id}>
                     <td className="p-4">
-                      <p className="font-medium text-gray-800">{mentor.name} {mentor.surname}</p>
-                      <p className="text-sm text-gray-500">{mentor.email || 'No email'}</p>
+                      <div className="flex items-center gap-3"><Avatar name={`${mentor.name} ${mentor.surname}`} /><div><p className="font-medium text-ink">{mentor.name} {mentor.surname}</p><p className="meta-text">{mentor.email || 'No email'}</p></div></div>
                     </td>
-                    <td className="p-4 text-gray-600">{mentor.specialisation || 'N/A'}</td>
-                    <td className="p-4 text-gray-600">{mentor.contact_number || 'N/A'}</td>
-                    <td className="p-4 text-gray-600">{assignedNames(mentor.mentor_id)}</td>
+                    <td className="p-4 text-ink-muted">{mentor.specialisation || 'N/A'}</td>
+                    <td className="p-4 text-ink-muted">{mentor.contact_number || 'N/A'}</td>
+                    <td className="p-4 text-ink-muted">{assignedNames(mentor.mentor_id)}</td>
                     <td className="p-4">
                       <button
                         type="button"
@@ -195,7 +193,7 @@ export default function Mentors() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Create mentor */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Add Mentor">
@@ -243,12 +241,12 @@ export default function Mentors() {
             <input className={input} value={createForm.contact_number} onChange={(e) => setCreateForm({ ...createForm, contact_number: e.target.value })} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setShowCreate(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+            <Button type="button" onClick={() => setShowCreate(false)} variant="secondary">
               Cancel
-            </button>
-            <button type="submit" disabled={saving || !createForm.user_id} className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
+            </Button>
+            <Button type="submit" loading={saving} disabled={!createForm.user_id}>
               {saving ? 'Creating...' : 'Create Mentor'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -277,22 +275,23 @@ export default function Mentors() {
                 ))}
             </select>
           </div>
-          <button
+          <Button
             type="submit"
-            disabled={assigningSave || !assignForm.apprentice_id}
-            className="w-full bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={assigningSave}
+            disabled={!assignForm.apprentice_id}
+            className="w-full"
           >
             {assigningSave ? 'Assigning...' : 'Assign Apprentice'}
-          </button>
+          </Button>
         </form>
 
         {assigning && (assignments[assigning.mentor_id] || []).length > 0 && (
           <div className="mt-6">
-            <p className="text-sm font-medium text-gray-700 mb-2">Current Assignments</p>
+            <p className="text-sm font-medium text-ink mb-2">Current Assignments</p>
             <div className="divide-y">
               {(assignments[assigning.mentor_id] || []).map((a) => (
                 <div key={a.assignment_id} className="py-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-ink">
                     Apprentice #{a.apprentice_id}
                     {a.assigned_date ? ` (since ${new Date(a.assigned_date).toLocaleDateString()})` : ''}
                   </span>

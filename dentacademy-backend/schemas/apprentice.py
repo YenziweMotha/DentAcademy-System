@@ -96,6 +96,7 @@ class ApprenticeRegister(BaseModel):
     address_line1: Optional[str] = None
     city: Optional[str] = None
     province: Optional[str] = None
+    education: Optional[EducationCreate] = None
 
     @field_validator("first_name", "surname")
     @classmethod

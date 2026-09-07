@@ -1747,243 +1747,55 @@ def create_ai_predictions(
 
     print("\nCreating AI predictions...")
 
+    from ai.features import build_feature_vector
+    from ai.model import get_prediction_model
+
+    ai_model = get_prediction_model()
     prediction_counter = 0
 
-    # Cache attendance
-    attendance_lookup = {}
-
-    attendance_rows = session.query(Attendance).all()
-
-    for row in attendance_rows:
-
-        attendance_lookup.setdefault(
-            row.apprentice_id,
-            []
-        ).append(float(row.attendance_rate))
-
-    # Cache module scores
-    module_lookup = {}
-
-    module_rows = session.query(ModuleProgress).all()
-
-    for row in module_rows:
-
-        if row.assessment_score is not None:
-
-            module_lookup.setdefault(
-                row.apprentice_id,
-                []
-            ).append(float(row.assessment_score))
-
-    # Cache evaluation scores
-    evaluation_lookup = {}
-
-    evaluation_rows = session.query(Evaluation).all()
-
-    for row in evaluation_rows:
-
-        evaluation_lookup.setdefault(
-            row.apprentice_id,
-            []
-        ).append(float(row.overall_score))
-
     for apprentice in apprentices:
-
-        profile = apprentice_profiles[
-            apprentice.apprentice_id
-        ]
-
-        attendance = attendance_lookup.get(
+        features, missing_fields = build_feature_vector(
             apprentice.apprentice_id,
-            []
+            session,
         )
-
-        module_scores = module_lookup.get(
-            apprentice.apprentice_id,
-            []
-        )
-
-        evaluations = evaluation_lookup.get(
-            apprentice.apprentice_id,
-            []
-        )
-
-        # ----------------------------------------------------------
-        # Feature Engineering
-        # ----------------------------------------------------------
-
-        average_attendance = (
-            round(sum(attendance) / len(attendance), 2)
-            if attendance else None
-        )
-
-        average_module = (
-            round(sum(module_scores) / len(module_scores), 2)
-            if module_scores else None
-        )
-
-        average_evaluation = (
-            round(sum(evaluations) / len(evaluations), 2)
-            if evaluations else None
-        )
-
-        missing_fields = []
-
-        if average_attendance is None:
-            missing_fields.append("attendance")
-
-        if average_module is None:
-            missing_fields.append("module_progress")
-
-        if average_evaluation is None:
-            missing_fields.append("evaluations")
-
         predictable = len(missing_fields) == 0
 
-        # ----------------------------------------------------------
-        # Prediction Logic
-        # ----------------------------------------------------------
-
         if predictable:
-
-            completion = round(
-
-                0.40 * average_module +
-
-                0.35 * (average_evaluation * 20) +
-
-                0.25 * average_attendance,
-
-                2
-
-            )
-
-            completion = max(
-                0,
-                min(completion, 100)
-            )
-
-            dropout = round(
-
-                100 - completion +
-
-                random.uniform(-5, 5),
-
-                2
-
-            )
-
-            dropout = max(
-                0,
-                min(dropout, 100)
-            )
-
-            employment = round(
-
-                completion * 0.75 +
-
-                random.uniform(5, 15),
-
-                2
-
-            )
-
-            employment = max(
-                0,
-                min(employment, 100)
-            )
-
-            confidence = round(
-
-                random.uniform(
-                    85,
-                    99
-                ),
-
-                2
-
-            )
-
+            result = ai_model.predict(features)
+            completion = result["completion_likelihood"]
+            dropout = result["dropout_risk"]
+            employment = result["employment_readiness"]
+            confidence = result["confidence_score"]
+            version = result.get("model_version")
         else:
-
             completion = None
             dropout = None
             employment = None
             confidence = None
-
-        # ----------------------------------------------------------
-        # Snapshot used by the ML model
-        # ----------------------------------------------------------
-
-        snapshot = {
-
-            "ability": profile["ability"],
-
-            "technical_skill": profile["technical_skill"],
-
-            "discipline": profile["discipline"],
-
-            "motivation": profile["motivation"],
-
-            "communication": profile["communication"],
-
-            "teamwork": profile["teamwork"],
-
-            "attendance_average": average_attendance,
-
-            "module_average": average_module,
-
-            "evaluation_average": average_evaluation
-
-        }
+            version = None
 
         prediction = AIPrediction(
-
             apprentice_id=apprentice.apprentice_id,
-
             generated_by=supervisor.user_id,
-
+            model_version=version,
             completion_likelihood=completion,
-
             dropout_risk=dropout,
-
             employment_readiness=employment,
-
             confidence_score=confidence,
-
-            feature_snapshot_json=snapshot,
-
+            feature_snapshot_json=features,
             missing_fields=missing_fields,
-
-            predictable=predictable
-
+            predictable=predictable,
         )
 
         session.add(prediction)
-
         prediction_counter += 1
 
-        # ----------------------------------------------------------
-        # Batch Commit
-        # ----------------------------------------------------------
-
         if prediction_counter % 500 == 0:
-
             session.commit()
-
-            print(
-
-                f"{prediction_counter:,} predictions generated..."
-
-            )
+            print(f"{prediction_counter:,} predictions generated...")
 
     session.commit()
-
-    print(
-
-        f"\n✓ {prediction_counter:,} AI predictions created."
-
-    )
+    print(f"\n✓ {prediction_counter:,} AI predictions created.")
 
 # =====================================================================
 # PART 3E - AUDIT LOGS

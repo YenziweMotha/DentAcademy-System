@@ -21,8 +21,17 @@ def run_startup():
     from models.attendance import Attendance
     from models.prediction import AIPrediction
     from models.audit import AuditLog
+    from models.experience_chat import (
+        ChatConversation,
+        ChatMessage,
+        ApprenticeExperience,
+        ExperienceEscalation,
+    )
 
     if os.getenv("AUTO_CREATE_TABLES", "1") == "1":
+        logger.info("Ensuring target database exists...")
+        from database import ensure_database
+        ensure_database()
         logger.info("Ensuring database tables exist (create_all)...")
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables ensured.")

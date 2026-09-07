@@ -1,7 +1,15 @@
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonCard } from '../../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import PageHeader from '../../components/ui/PageHeader';
+import Card, { CardHeader } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import EmptyState from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
+import StatCard from '../../components/ui/StatCard';
+import { BookOpen, Gauge, ClipboardCheck, TrendingUp, Download, ArrowLeft } from 'lucide-react';
 
 export default function Performance() {
   const { apprenticeId } = useParams();
@@ -17,18 +25,31 @@ export default function Performance() {
       setDownloading(true);
       const response = await api.get(
         `/api/reports/apprentice/${apprenticeId}`,
-        { responseType: 'blob' }
+        { responseType: 'blob', timeout: 90000 }
       );
       const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `apprentice_${apprenticeId}_report.pdf`;
+      const surname = data?.apprentice?.surname || apprenticeId;
+      link.download = `DentAcademy_Apprentice_Report_${surname}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to generate the PDF report.');
+      let message = 'Failed to generate the PDF report.';
+      const payload = err.response?.data;
+      if (payload instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await payload.text());
+          message = parsed.detail || message;
+        } catch {
+          /* keep fallback */
+        }
+      } else if (payload?.detail) {
+        message = payload.detail;
+      }
+      setError(message);
     } finally {
       setDownloading(false);
     }
@@ -69,11 +90,7 @@ export default function Performance() {
 
   if (error) {
     return (
-      <div>
-        <div className="bg-red-100 text-red-700 p-4 rounded">
-          {error}
-        </div>
-      </div>
+      <ErrorState title="Could not load performance" description={error} onRetry={() => window.location.reload()} />
     );
   }
 
@@ -84,44 +101,33 @@ export default function Performance() {
   const { apprentice, summary, modules, evaluations, prediction } = data;
 
   return (
-    <div>
+    <div className="page-shell">
 
       {/* HEADER */}
 
-      <div className="flex justify-between items-center mb-6">
-
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Apprentice Performance
-          </h1>
-
-          <p className="text-gray-500 mt-1">
-            {apprentice.first_name} {apprentice.surname}
-          </p>
-
-          <button
+      <PageHeader title="Apprentice Performance" subtitle={`${apprentice.first_name} ${apprentice.surname} — official record with AI commentary in the PDF`} actions={<>
+          <Button
             type="button"
             onClick={downloadReport}
-            disabled={downloading}
-            className="mt-2 bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={downloading}
+            icon={Download}
+            variant="secondary"
           >
-            {downloading ? 'Generating PDF...' : 'Download PDF Report'}
-          </button>
-        </div>
-
-        <button
+            {downloading ? 'Generating PDF...' : 'Download official PDF'}
+          </Button>
+        <Button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          variant="ghost"
+          icon={ArrowLeft}
         >
           Back
-        </button>
-
-      </div>
+        </Button>
+      </>} />
 
 
       {/* APPRENTICE INFORMATION */}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <Card className="mb-6">
 
         <h2 className="text-lg font-semibold mb-4">
           Apprentice Information
@@ -130,7 +136,7 @@ export default function Performance() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               Name
             </p>
             <p className="font-medium">
@@ -139,7 +145,7 @@ export default function Performance() {
           </div>
 
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               ID Number
             </p>
             <p className="font-medium">
@@ -148,80 +154,38 @@ export default function Performance() {
           </div>
 
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               Status
             </p>
-            <p className="font-medium">
-              {apprentice.status}
-            </p>
+            <StatusBadge status={apprentice.status} />
           </div>
 
         </div>
 
-      </div>
+      </Card>
 
 
       {/* PERFORMANCE SUMMARY */}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 uppercase">
-            Module Completion
-          </p>
-
-          <p className="text-3xl font-bold mt-2">
-            {summary.completion_percentage}%
-          </p>
-
-          <p className="text-sm text-gray-500 mt-1">
-            {summary.completed_modules} / {summary.total_modules}
-          </p>
-        </div>
+        <StatCard icon={BookOpen} label="Module Completion" value={`${summary.completion_percentage}%`} hint={`${summary.completed_modules} / ${summary.total_modules}`} />
 
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 uppercase">
-            Average Module Score
-          </p>
-
-          <p className="text-3xl font-bold mt-2">
-            {summary.average_module_score ?? 'N/A'}
-          </p>
-        </div>
+        <StatCard icon={Gauge} label="Average Module Score" value={summary.average_module_score ?? 'N/A'} tone="blue" />
 
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 uppercase">
-            Evaluation Score
-          </p>
-
-          <p className="text-3xl font-bold mt-2">
-            {summary.latest_evaluation_score ?? 'N/A'}
-          </p>
-        </div>
+        <StatCard icon={ClipboardCheck} label="Evaluation Score" value={summary.latest_evaluation_score ?? 'N/A'} />
 
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 uppercase">
-            Overall Performance
-          </p>
-
-          <p className="text-3xl font-bold mt-2">
-            {summary.overall_score ?? 'N/A'}
-          </p>
-
-          <p className="text-sm text-gray-500 mt-1">
-            {summary.performance_status}
-          </p>
-        </div>
+        <StatCard icon={TrendingUp} label="Overall Performance" value={summary.overall_score ?? 'N/A'} hint={summary.performance_status} />
 
       </div>
 
 
       {/* MODULE PERFORMANCE */}
 
-      <div className="bg-white rounded-lg shadow mb-6">
+      <Card padding={false} className="mb-6">
 
         <div className="p-6 border-b">
           <h2 className="text-lg font-semibold">
@@ -233,7 +197,7 @@ export default function Performance() {
 
           <table className="w-full">
 
-            <thead className="bg-gray-50">
+            <thead className="bg-surface-muted/60">
 
               <tr>
                 <th className="text-left p-4">
@@ -298,12 +262,12 @@ export default function Performance() {
 
         </div>
 
-      </div>
+      </Card>
 
 
       {/* EVALUATIONS */}
 
-      <div className="bg-white rounded-lg shadow mb-6">
+      <Card padding={false} className="mb-6">
 
         <div className="p-6 border-b">
           <h2 className="text-lg font-semibold">
@@ -315,9 +279,7 @@ export default function Performance() {
 
           {evaluations.length === 0 ? (
 
-            <p className="text-gray-500">
-              No evaluations recorded.
-            </p>
+            <EmptyState title="No evaluations recorded" description="Evaluation results will appear here once submitted." />
 
           ) : (
 
@@ -340,7 +302,7 @@ export default function Performance() {
 
                 </div>
 
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Submitted: {
                     evaluation.submitted_at
                       ? new Date(
@@ -358,12 +320,12 @@ export default function Performance() {
 
         </div>
 
-      </div>
+      </Card>
 
 
       {/* AI PREDICTION */}
 
-      <div className="bg-white rounded-lg shadow mb-6">
+      <Card padding={false} className="mb-6">
 
         <div className="p-6 border-b">
 
@@ -377,16 +339,14 @@ export default function Performance() {
 
           {!prediction ? (
 
-            <p className="text-gray-500">
-              No AI prediction has been generated.
-            </p>
+            <EmptyState title="No AI prediction" description="Generate a prediction once sufficient performance data is available." />
 
           ) : (
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
               <div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Dropout Risk
                 </p>
 
@@ -400,7 +360,7 @@ export default function Performance() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Completion Likelihood
                 </p>
 
@@ -410,7 +370,7 @@ export default function Performance() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Employment Readiness
                 </p>
 
@@ -420,7 +380,7 @@ export default function Performance() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Confidence
                 </p>
 
@@ -435,7 +395,7 @@ export default function Performance() {
 
         </div>
 
-      </div>
+      </Card>
 
     </div>
   );

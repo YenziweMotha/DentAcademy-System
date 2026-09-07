@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import Spinner from '../components/ui/Spinner';
 import Logo from '../components/ui/Logo';
 import AlertBanner from '../components/ui/AlertBanner';
 import brandImage from '../auto-mechanic-working-underneath-car-lifting-machine-at-the-garage-auto-repair-shop-car-service-repair-3-video.jpg';
@@ -23,6 +22,10 @@ export default function Login() {
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -52,7 +55,6 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError('');
     setLoading(true);
 
@@ -60,8 +62,7 @@ export default function Login() {
       await login(username, password);
     } catch (err) {
       const message =
-        err.response?.data?.detail ||
-        'Login failed. Please try again.';
+        err.response?.data?.detail || 'Login failed. Please try again.';
       setError(message);
       setShakeKey((k) => k + 1);
     } finally {
@@ -75,140 +76,141 @@ export default function Login() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-100">
-        <Spinner size="lg" className="text-brand" />
+      <div className="flex h-screen items-center justify-center bg-surface">
+        <div className="h-12 w-12 rounded-full border-4 border-brand/20 border-t-brand animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Brand panel */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden">
-        <div className="absolute inset-0">
-          <img src={brandImage} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-dark/90 via-brand/85 to-emerald-700/90" />
-        </div>
-        <div className="relative z-10 flex items-center gap-3">
-          <Logo size={44} light />
-          <div>
-            <h1 className="text-2xl font-bold leading-tight">DentAcademy</h1>
-            <p className="text-emerald-100 text-sm">Apprenticeship Program</p>
-          </div>
-        </div>
-
-        <div className="relative z-10 space-y-8">
-          <h2 className="text-4xl font-bold leading-tight max-w-md shadow-md">
-            Shaping the next generation of skilled professionals.
-          </h2>
-          <p className="text-emerald-50 text-sm max-w-md leading-relaxed">
-            Aspiring professionals completing accredited
-            training through structured workplace apprenticeships.
-          </p>
-          <ul className="space-y-3 text-emerald-50 text-sm">
-            <li className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Learn under the guidance of experienced, registered workshop mentors
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Build the hands-on competence and professionalism the industry trusts
-            </li>
-          </ul>
-        </div>
-
-        <p className="relative z-10 text-emerald-200/70 text-xs">
-          © {new Date().getFullYear()} DentAcademy. All rights reserved.
-        </p>
+    <div className="min-h-screen relative overflow-hidden bg-[#07111F]">
+      {/* Full-bleed atmosphere */}
+      <div className="absolute inset-0">
+        <img
+          src={brandImage}
+          alt=""
+          className="h-full w-full object-cover scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#07111F]/92 via-[#0B1F3A]/78 to-[#0B5FFF]/55" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgb(11_95_255_/_0.35),transparent_42%),radial-gradient(circle_at_80%_80%,rgb(255_107_44_/_0.22),transparent_40%)]" />
       </div>
 
-      {/* Form panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div key={shakeKey} className={`w-full max-w-md ${shakeKey ? 'shake' : ''}`}>
-          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
-            <Logo size={40} />
+      <div className="relative z-10 min-h-screen grid lg:grid-cols-2">
+        {/* Brand story */}
+        <div className="hidden lg:flex flex-col justify-between p-12 xl:p-16 text-white">
+          <div className="flex items-center gap-3 animate-fade-up">
+            <Logo size={48} light />
             <div>
-              <h1 className="text-2xl font-bold text-gray-800 leading-tight">
+              <p className="text-4xl font-extrabold tracking-tight leading-none">
                 DentAcademy
-              </h1>
-              <p className="text-gray-500 text-sm">Apprenticeship Program</p>
+              </p>
+              <p className="text-blue-100/80 text-sm mt-1 tracking-wide">
+                Apprenticeship Program
+              </p>
             </div>
           </div>
 
-          <div className="bg-white py-8 px-6 sm:px-10 shadow sm:rounded-2xl">
-            <h2 className="text-xl font-semibold text-gray-800 mb-1">
-              Sign in to your account
-            </h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Enter your credentials to access the portal.
+          <div className="max-w-xl space-y-6 animate-fade-up" style={{ animationDelay: '80ms' }}>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
+              Built for real workshops
             </p>
+            <h2 className="text-5xl xl:text-6xl font-extrabold leading-[1.05] tracking-tight">
+              Train with clarity.
+              <span className="block text-blue-200/90">Lead with confidence.</span>
+            </h2>
+            <p className="text-blue-50/85 text-base leading-relaxed max-w-md">
+              One modern portal for apprentices, mentors, and supervisors —
+              progress, evaluations, and performance in a single polished experience.
+            </p>
+          </div>
 
-            {error && (
-              <div className="mb-4">
-                <AlertBanner type="error" message={error} />
-              </div>
-            )}
+          <p className="text-blue-200/55 text-xs animate-fade-up" style={{ animationDelay: '140ms' }}>
+            © {new Date().getFullYear()} DentAcademy. All rights reserved.
+          </p>
+        </div>
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <Input
-                label="Username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
-
+        {/* Sign-in panel */}
+        <div className="flex items-center justify-center px-5 py-10 sm:px-8">
+          <div
+            key={shakeKey}
+            className={`w-full max-w-[420px] ${shakeKey ? 'shake' : ''}`}
+          >
+            <div className="lg:hidden flex items-center gap-3 justify-center mb-8 text-white">
+              <Logo size={40} light />
               <div>
+                <h1 className="text-2xl font-extrabold leading-tight">DentAcademy</h1>
+                <p className="text-blue-100/80 text-sm">Apprenticeship Program</p>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] bg-white p-7 sm:p-9 shadow-[0_30px_80px_rgb(0_0_0_/_0.35)] animate-scale-in">
+              <div className="mb-7">
+                <h2 className="text-2xl font-extrabold text-ink tracking-tight">
+                  Welcome back
+                </h2>
+                <p className="text-sm text-ink-muted mt-1.5">
+                  Sign in to continue to your workspace.
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4">
+                  <AlertBanner type="error" message={error} />
+                </div>
+              )}
+
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 <Input
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  autoComplete="current-password"
+                  label="Username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
                   required
                 />
-                <div className="flex items-center justify-between mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-brand transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                    {showPassword ? 'Hide password' : 'Show password'}
-                  </button>
-                  {capsLockOn && (
-                    <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-                      <AlertCircle size={14} /> Caps Lock is on
+
+                <div>
+                  <Input
+                    label="Password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-brand transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {showPassword ? 'Hide password' : 'Show password'}
+                    </button>
+                    {capsLockOn && (
+                      <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                        <AlertCircle size={14} /> Caps Lock is on
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full !py-3 !text-base" loading={loading}>
+                  {loading ? 'Signing in...' : (
+                    <span className="inline-flex items-center gap-2">
+                      Sign in <ArrowRight size={16} />
                     </span>
                   )}
-                </div>
-              </div>
+                </Button>
+              </form>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Spinner size="sm" /> Signing in...
-                  </span>
-                ) : (
-                  'Sign in'
-                )}
-              </Button>
-            </form>
-
-            <p className="text-center text-sm text-gray-500 mt-6">
-              <Link
-                to="/forgot-password"
-                className="text-brand hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </p>
+              <p className="text-center text-sm text-ink-muted mt-6">
+                <Link to="/forgot-password" className="text-brand font-semibold hover:underline">
+                  Forgot password?
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -18,6 +18,6 @@ export const logout = async () => {
     return response.data;
 };
 export const getMe = async () => {
-  const response = await api.get('api/auth/me');
+  const response = await api.get('/api/auth/me');
   return response.data;
 };

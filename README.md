@@ -1,9 +1,8 @@
 # DentAcademy Apprenticeship Management Portal
 
 ## Overview
-A web-based apprenticeship management portal built for Dent Doctor Lebowakgomo, an automotive workshop in Lebowakgomo, Limpopo, South Africa. The system manages apprentices and annual intakes of TVET college students, replacing a manual process.
+A web-based apprenticeship management portal for an automotive workshop apprenticeship programme in Lebowakgomo, Limpopo, South Africa. The system manages apprentices and annual intakes of TVET college students, replacing a manual process.
 
-**Client:** Dent Doctor Lebowakgomo  
 **Developer:** Group 13, University of Limpopo  
 **Course:** COSC300 2026  
 

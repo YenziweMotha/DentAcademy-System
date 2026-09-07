@@ -8,6 +8,12 @@ from .attendance import Attendance
 from .prediction import AIPrediction
 from .audit import AuditLog
 from .settings import SystemSetting
+from .experience_chat import (
+    ChatConversation,
+    ChatMessage,
+    ApprenticeExperience,
+    ExperienceEscalation,
+)
 from database import Base
 
 __all__ = [
@@ -24,5 +30,9 @@ __all__ = [
     "AIPrediction",
     "AuditLog",
     "SystemSetting",
+    "ChatConversation",
+    "ChatMessage",
+    "ApprenticeExperience",
+    "ExperienceEscalation",
     "Base",
 ]

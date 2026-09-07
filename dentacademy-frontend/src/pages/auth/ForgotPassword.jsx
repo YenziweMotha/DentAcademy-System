@@ -3,8 +3,8 @@ import api from '../../api/axios';
 import { Link } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import Spinner from '../../components/ui/Spinner';
 import AlertBanner from '../../components/ui/AlertBanner';
+import { useToast } from '../../context/ToastContext';
 import AuthShell from './AuthShell';
 
 export default function ForgotPassword() {
@@ -13,6 +13,7 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [devToken, setDevToken] = useState('');
+  const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +27,7 @@ export default function ForgotPassword() {
         email: email.trim(),
       });
       setMessage(res.data.message || 'If that email is registered, a reset link has been sent.');
+      toast.success('Password reset instructions requested.');
       if (res.data.dev_token) setDevToken(res.data.dev_token);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send reset email.');
@@ -40,9 +42,7 @@ export default function ForgotPassword() {
       subtitle="Enter your email to receive a password reset link."
     >
       {message && (
-        <div className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {message}
-        </div>
+        <AlertBanner type="success" message={message} className="mb-4" />
       )}
       {error && (
         <div className="mb-4">
@@ -51,10 +51,7 @@ export default function ForgotPassword() {
       )}
 
       {devToken && (
-        <div className="bg-yellow-50 text-yellow-800 px-4 py-3 rounded-md mb-4 text-sm break-all">
-          <p className="font-medium">Development token (no SMTP configured):</p>
-          <p className="mt-1">{devToken}</p>
-        </div>
+        <AlertBanner type="warning" className="mb-4" message={`Development token (no SMTP configured): ${devToken}`} />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -67,18 +64,12 @@ export default function ForgotPassword() {
           placeholder="you@example.co.za"
         />
 
-        <Button type="submit" className="w-full" disabled={submitting}>
-          {submitting ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner size="sm" /> Sending...
-            </span>
-          ) : (
-            'Send Reset Link'
-          )}
+        <Button type="submit" className="w-full" loading={submitting}>
+          {submitting ? 'Sending...' : 'Send Reset Link'}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 mt-6">
+      <p className="text-center text-sm text-ink-muted mt-6">
         Remembered your password?{' '}
         <Link to="/login" className="text-brand hover:underline">
           Back to login

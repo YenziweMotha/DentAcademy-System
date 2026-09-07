@@ -232,6 +232,19 @@ def _complete_registration(
         app.user_id = app_user.user_id
         app_user.full_name = f"{app_in.first_name} {app_in.surname}"
 
+    education_in = getattr(app_in, "education", None)
+    if education_in is not None:
+        education = app.education
+        if education is None:
+            education = Education(apprentice=app)
+            db.add(education)
+        education.qualification_type = education_in.qualification_type
+        education.institution_name = education_in.institution_name
+        _sync_subjects(
+            education,
+            [subject.model_dump() for subject in (education_in.subjects or [])],
+        )
+
     app.registered_at = datetime.utcnow()
     app.updated_at = datetime.utcnow()
     db.commit()
@@ -247,6 +260,7 @@ def _complete_registration(
         new_value={
             "registration_completed": True,
             "names": f"{app.first_name} {app.surname}",
+            "education_captured": education_in is not None,
             "credentials_emailed": credentials_sent,
         },
         ip_address=get_client_ip(request),
@@ -451,7 +465,7 @@ def register_existing_apprentice(
     request: Request,
     app_in: ApprenticeRegister,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
     """Complete the registration of a placeholder apprentice.
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import RatingInput from '../ui/RatingInput';
 import Button from '../ui/Button';
+import AlertBanner from '../ui/AlertBanner';
 
 export default function EvaluationForm({ onSubmit, loading }) {
   const [formData, setFormData] = useState({
@@ -36,7 +37,7 @@ export default function EvaluationForm({ onSubmit, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <div className="p-3 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
+      {error && <AlertBanner type="error" message={error} />}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <RatingInput label="Discipline" value={formData.discipline} onChange={(v) => handleChange('discipline', v)} />
@@ -48,9 +49,9 @@ export default function EvaluationForm({ onSubmit, loading }) {
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Additional Comments</label>
+        <label className="block text-sm font-medium text-ink mb-1.5">Additional Comments</label>
         <textarea
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand"
+          className="w-full px-3.5 py-2.5 border border-line bg-surface-raised text-ink rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           rows="4"
           value={formData.comments}
           onChange={(e) => handleChange('comments', e.target.value)}
@@ -58,7 +59,7 @@ export default function EvaluationForm({ onSubmit, loading }) {
       </div>
       
       <div className="flex justify-end">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" loading={loading}>
           {loading ? 'Submitting...' : 'Submit Evaluation'}
         </Button>
       </div>

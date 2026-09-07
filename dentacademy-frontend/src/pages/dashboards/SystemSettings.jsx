@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonCard } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import AlertBanner from '../../components/ui/AlertBanner';
 
 export default function SystemSettings() {
   const toast = useToast();
@@ -66,71 +71,50 @@ export default function SystemSettings() {
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          System Settings
-        </h1>
-        <p className="text-gray-500 mt-1">
-          Configure thresholds and security periods used across the
-          system.
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="System Settings" subtitle="Configure thresholds and security periods used across the system." />
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">
-          {error}
-        </div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
       {saved && (
-        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-md mb-6">
-          Settings saved successfully.
-        </div>
+        <AlertBanner type="success" message="Settings saved successfully." className="mb-6" />
       )}
 
-      <form
+      <Card as="form"
         onSubmit={handleSave}
-        className="bg-white rounded-lg shadow p-6 space-y-6"
+        className="space-y-6 animate-fade-up"
       >
         {loading ? (
           <SkeletonCard lines={4} />
         ) : (
           settings.map((setting) => (
-            <div key={setting.key}>
-              <label
-                htmlFor={setting.key}
-                className="block text-sm font-medium text-gray-700"
-              >
-                {labels[setting.key] || setting.key}
-              </label>
-              <input
+            <Input
+                key={setting.key}
                 id={setting.key}
+                label={labels[setting.key] || setting.key}
                 type="number"
                 min="1"
                 value={setting.value}
                 onChange={(e) =>
                   handleChange(setting.key, e.target.value)
                 }
-                className="mt-1 w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="max-w-md"
+                hint={setting.description}
               />
-              <p className="text-sm text-gray-500 mt-1">
-                {setting.description}
-              </p>
-            </div>
           ))
         )}
 
         {!loading && (
-          <button
+          <Button
             type="submit"
-            disabled={saving}
-            className="bg-brand text-white px-5 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={saving}
           >
             {saving ? 'Saving...' : 'Save Settings'}
-          </button>
+          </Button>
         )}
-      </form>
+      </Card>
     </div>
   );
 }

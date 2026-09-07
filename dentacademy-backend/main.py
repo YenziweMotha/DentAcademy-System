@@ -18,6 +18,8 @@ from routers import (
     reports_router,
     dashboard_router,
     config_router,
+    experience_chat_router,
+    audit_router,
 )
 from middleware.auth_middleware import SecurityHeadersMiddleware
 
@@ -32,9 +34,9 @@ logger = logging.getLogger("dentacademy")
 app = FastAPI(
     title="DentAcademy Management Portal",
     description=(
-        "DentAcademy apprenticeship management portal for Dent Doctor "
-        "Lebowakgomo. All endpoints are JSON; authentication is JWT (Bearer) "
-        "issued via /api/auth/login. See /redoc for the full schema."
+        "DentAcademy apprenticeship management portal. All endpoints are JSON; "
+        "authentication is JWT (Bearer) issued via /api/auth/login. "
+        "See /redoc for the full schema."
     ),
     version="1.0.0",
 )
@@ -128,6 +130,8 @@ app.include_router(predictions_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
 app.include_router(config_router)
+app.include_router(experience_chat_router)
+app.include_router(audit_router)
 
 
 # ------------------------------------------------------------------

@@ -1,28 +1,35 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
-import Spinner from '../../components/ui/Spinner';
 import { SkeletonCard } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import AlertBanner from '../../components/ui/AlertBanner';
 
 const PROVINCES = [
   'Limpopo', 'Gauteng', 'Mpumalanga', 'North West',
   'Free State', 'Northern Cape', 'Western Cape', 'Eastern Cape', 'KwaZulu-Natal',
 ];
 
-export default function ApprenticeCreate() {
+/**
+ * Second step of apprentice registration: captures the personal and academic
+ * details for an apprentice whose login account already exists.
+ */
+export default function ApprenticeRegister() {
   const navigate = useNavigate();
   const toast = useToast();
-
-  // With an apprenticeId in the URL the page completes the registration of a
-  // placeholder created with an Apprentice login account on the Users page.
   const { apprenticeId } = useParams();
-  const completing = Boolean(apprenticeId);
+  const { state } = useLocation();
+
+  // Set when arriving straight from the account step, so the admin can still
+  // read the generated credentials if email delivery is not configured.
+  const credentials = state?.credentials || null;
 
   const [formData, setFormData] = useState({
     first_name: '',
     surname: '',
-    id_number: '',
     date_of_birth: '',
     gender: '',
     contact_number: '',
@@ -38,13 +45,11 @@ export default function ApprenticeCreate() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [loading, setLoading] = useState(completing);
+  const [loading, setLoading] = useState(true);
   const [maskedId, setMaskedId] = useState('');
-  const [hasEducation, setHasEducation] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   useEffect(() => {
-    if (!completing) return;
-
     api
       .get(`/api/apprentices/${apprenticeId}`)
       .then(({ data }) => {
@@ -63,7 +68,6 @@ export default function ApprenticeCreate() {
           institution_name: data.institution || '',
         }));
         setMaskedId(data.id_number || '');
-        setHasEducation(Boolean(data.qualification_type));
         if (data.qualification_type) {
           // Keep any subjects already captured, so saving does not drop them.
           api
@@ -82,6 +86,7 @@ export default function ApprenticeCreate() {
             .catch(() => {});
         }
         if (data.is_registered) {
+          setAlreadyRegistered(true);
           setFormError(
             'This apprentice is already registered. Use Edit to change their details.'
           );
@@ -93,7 +98,7 @@ export default function ApprenticeCreate() {
         );
       })
       .finally(() => setLoading(false));
-  }, [apprenticeId, completing]);
+  }, [apprenticeId]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -124,18 +129,6 @@ export default function ApprenticeCreate() {
     const next = {};
     if (!formData.first_name.trim()) next.first_name = 'First name is required.';
     if (!formData.surname.trim()) next.surname = 'Surname is required.';
-    if (!completing) {
-      if (!/^\d{13}$/.test(formData.id_number.trim())) {
-        next.id_number = 'ID number must be exactly 13 digits.';
-      } else {
-        const dob = formData.id_number.slice(0, 6);
-        const month = Number(dob.slice(2, 4));
-        const day = Number(dob.slice(4, 6));
-        if (month < 1 || month > 12 || day < 1 || day > 31) {
-          next.id_number = 'ID number contains an invalid date of birth.';
-        }
-      }
-    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       next.email = 'A valid email is required — login credentials are emailed to it.';
     }
@@ -166,34 +159,25 @@ export default function ApprenticeCreate() {
         province: formData.province || undefined,
       };
 
-      const res = completing
-        ? await api.post(`/api/apprentices/${apprenticeId}/registration`, payload)
-        : await api.post('/api/apprentices', { ...payload, id_number: formData.id_number.trim() });
-      const newId = res.data.apprentice_id;
-
       if (formData.qualification_type) {
-        const education = {
+        payload.education = {
           qualification_type: formData.qualification_type,
           institution_name: formData.institution_name.trim(),
           subjects: formData.subjects
             .filter((s) => s.subject.trim() !== '' && s.mark !== '')
             .map((s) => ({ subject: s.subject.trim(), mark: Number(s.mark) })),
         };
-        if (!education.subjects.length) delete education.subjects;
-
-        if (hasEducation) {
-          await api.put(`/api/apprentices/${newId}/education`, education);
-        } else {
-          await api.post(`/api/apprentices/${newId}/education`, education);
-        }
+        if (!payload.education.subjects.length) delete payload.education.subjects;
       }
 
-      navigate(`/apprentices/${newId}`);
-      toast.success(
-        completing
-          ? 'Registration completed successfully.'
-          : 'Apprentice registered successfully.'
+      const res = await api.post(
+        `/api/apprentices/${apprenticeId}/registration`,
+        payload
       );
+      const newId = res.data.apprentice_id;
+
+      navigate(`/apprentices/${newId}`);
+      toast.success('Apprentice registered successfully.');
     } catch (err) {
       console.error('Failed to register apprentice:', err);
       setFormError(err.response?.data?.detail || 'Failed to register apprentice.');
@@ -202,33 +186,41 @@ export default function ApprenticeCreate() {
     }
   };
 
-  const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
+  const input = 'w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
+  const label = 'block text-sm font-medium text-ink mb-1';
 
   if (loading) {
     return <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>;
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">
-          {completing ? 'Complete Registration' : 'Register Apprentice'}
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {completing
-            ? 'This apprentice has a login account but is not registered yet. Capture their remaining details to complete registration.'
-            : 'Capture personal details and optional academic information.'}
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Register Apprentice" subtitle="Step 2 of 2 — capture personal details and optional academic information." />
 
-      {formError && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{formError}</div>
+      {credentials && (
+        <AlertBanner type="success" className="mb-6" message={<span>
+          <span className="font-medium">
+            Login account created — username{' '}
+            <span className="font-mono">{credentials.username}</span>
+          </span>
+          {credentials.password ? (
+            <span className="block mt-1">
+              Password <span className="font-mono">{credentials.password}</span> — email
+              is not configured, so pass these on to the apprentice.
+            </span>
+          ) : (
+            <span className="block mt-1">The credentials have been emailed to them.</span>
+          )}
+        </span>} />
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
+      {formError && (
+        <AlertBanner type={alreadyRegistered ? 'warning' : 'error'} message={formError} className="mb-6" />
+      )}
+
+      <Card as="form" onSubmit={handleSubmit} className="space-y-6 animate-fade-up">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Personal Details</h2>
+          <h2 className="section-title mb-4">Personal Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -244,24 +236,11 @@ export default function ApprenticeCreate() {
             </div>
 
             <div>
-              <label className={label}>ID Number (13 digits) *</label>
-              {completing ? (
-                <>
-                  <input className={`${input} bg-gray-100`} value={maskedId} disabled />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Captured with the login account and cannot be changed here.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <input
-                    className={input}
-                    value={formData.id_number}
-                    onChange={(e) => handleChange('id_number', e.target.value.replace(/\D/g, '').slice(0, 13))}
-                  />
-                  {errors.id_number && <p className="text-red-500 text-sm mt-1">{errors.id_number}</p>}
-                </>
-              )}
+              <label className={label}>ID Number</label>
+              <input className={`${input} bg-surface-muted`} value={maskedId} disabled />
+              <p className="text-xs text-ink-muted mt-1">
+                Captured with the login account and cannot be changed here.
+              </p>
             </div>
 
             <div>
@@ -288,14 +267,12 @@ export default function ApprenticeCreate() {
               <label className={label}>Email *</label>
               <input
                 type="email"
-                className={input}
+                className={`${input} bg-surface-muted`}
                 value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
+                disabled
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {completing
-                  ? 'The address on their login account. Changing it updates the apprentice record.'
-                  : 'A login account is created automatically and credentials are emailed here.'}
+              <p className="text-xs text-ink-muted mt-1">
+                This is the address attached to their login account.
               </p>
               {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
@@ -323,7 +300,7 @@ export default function ApprenticeCreate() {
         </div>
 
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Academic Details (optional)</h2>
+          <h2 className="section-title mb-4">Academic Details (optional)</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -339,7 +316,7 @@ export default function ApprenticeCreate() {
           </div>
 
           <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Subjects and marks</p>
+            <p className="text-sm font-medium text-ink mb-2">Subjects and marks</p>
 
             {formData.subjects.map((subject, index) => (
               <div key={index} className="flex gap-3 mb-2">
@@ -358,35 +335,27 @@ export default function ApprenticeCreate() {
                   value={subject.mark}
                   onChange={(e) => handleSubjectChange(index, 'mark', e.target.value)}
                 />
-                <button type="button" onClick={() => removeSubject(index)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded">
+                <Button type="button" onClick={() => removeSubject(index)} variant="ghost" className="text-rose-600">
                   Remove
-                </button>
+                </Button>
               </div>
             ))}
 
-            <button type="button" onClick={addSubject} className="text-brand text-sm hover:underline">
+            <Button type="button" onClick={addSubject} variant="ghost" size="sm">
               + Add subject
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/apprentices')} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+          <Button type="button" onClick={() => navigate('/apprentices')} variant="secondary">
             Cancel
-          </button>
-          <button type="submit" disabled={submitting} className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
-            {submitting ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner size="sm" /> Registering...
-              </span>
-            ) : completing ? (
-              'Complete Registration'
-            ) : (
-              'Register Apprentice'
-            )}
-          </button>
+          </Button>
+          <Button type="submit" loading={submitting} disabled={alreadyRegistered}>
+            {submitting ? 'Registering...' : 'Complete Registration'}
+          </Button>
         </div>
-      </form>
+      </Card>
     </div>
   );
 }

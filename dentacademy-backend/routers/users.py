@@ -39,7 +39,7 @@ def create_user(
     request: Request,
     user_in: UserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
     """Create a user. When no password is supplied, the system generates a
     username and a credential-combination password and emails them to the
@@ -47,6 +47,14 @@ def create_user(
 
     Apprentice and Mentor accounts also get the matching domain profile, so the
     new user can immediately use their role's dashboard."""
+    if current_user.role != "Administrator" and not (
+        current_user.role == "Supervisor" and user_in.role == "Apprentice"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can create this type of user.",
+        )
+
     id_number = (user_in.id_number or "").strip()
     first_name, surname = _split_full_name(user_in.full_name)
     linked_apprentice = None
@@ -108,6 +116,7 @@ def create_user(
 
     contact_number = (user_in.contact_number or "").strip() or None
     apprentice_id = None
+    apprentice_registered = None
     mentor_id = None
 
     if user_in.role == "Apprentice":
@@ -128,6 +137,7 @@ def create_user(
             db.add(linked_apprentice)
         db.flush()
         apprentice_id = linked_apprentice.apprentice_id
+        apprentice_registered = linked_apprentice.registered_at is not None
 
     elif user_in.role == "Mentor":
         mentor = Mentor(
@@ -155,6 +165,7 @@ def create_user(
             "role": user.role,
             "credentials_emailed": sent,
             "apprentice_id": apprentice_id,
+            "apprentice_registered": apprentice_registered,
             "mentor_id": mentor_id,
         },
         ip_address=get_client_ip(request),
@@ -163,6 +174,7 @@ def create_user(
     result = UserOut.model_validate(user, from_attributes=True).model_dump()
     result["credentials_sent"] = sent
     result["apprentice_id"] = apprentice_id
+    result["apprentice_registered"] = apprentice_registered
     result["mentor_id"] = mentor_id
     if not sent:
         result["dev_password"] = password

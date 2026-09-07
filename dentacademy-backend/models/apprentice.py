@@ -47,3 +47,5 @@ class Apprentice(Base):
     predictions = relationship("AIPrediction", back_populates="apprentice")
     mentor_assignments = relationship("MentorAssignment", back_populates="apprentice")
     attendance_records = relationship("Attendance", back_populates="apprentice")
+    chat_conversations = relationship("ChatConversation", back_populates="apprentice")
+    experiences = relationship("ApprenticeExperience", back_populates="apprentice")

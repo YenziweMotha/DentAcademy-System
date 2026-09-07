@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ document_title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @top-left {
+        content: "DentAcademy Apprenticeship Programme";
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @top-right {
+        content: "CONFIDENTIAL";
+        font-size: 8pt;
+        font-weight: bold;
+        letter-spacing: 0.12em;
+        color: #8a1c1c;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @bottom-left {
+        content: "{{ report_ref }}";
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+    }
+    @page :first {
+      margin-top: 14mm;
+      @top-left { content: none; }
+      @top-right { content: none; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Times New Roman", Times, Georgia, serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1f24;
+      margin: 0;
+    }
+    .letterhead {
+      border-bottom: 2.5pt solid #0f2744;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .letterhead-gold {
+      height: 3.5pt;
+      background: #c5a572;
+      margin-bottom: 12px;
+    }
+    .org-name {
+      font-size: 16pt;
+      font-weight: bold;
+      letter-spacing: 0.04em;
+      color: #0f2744;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .org-sub {
+      font-size: 9.5pt;
+      color: #3d4a57;
+      margin: 2px 0 0 0;
+    }
+    .classification {
+      float: right;
+      text-align: right;
+      font-size: 8.5pt;
+      color: #8a1c1c;
+      font-weight: bold;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border: 1pt solid #8a1c1c;
+      padding: 4px 8px;
+      margin-top: 2px;
+    }
+    h1 {
+      font-size: 15pt;
+      color: #0f2744;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 18px 0 6px 0;
+    }
+    .issued {
+      text-align: center;
+      font-size: 9.5pt;
+      color: #3d4a57;
+      margin: 0 0 16px 0;
+    }
+    h2 {
+      font-size: 11.5pt;
+      color: #0f2744;
+      border-bottom: 0.75pt solid #0f2744;
+      padding-bottom: 3px;
+      margin: 18px 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #0f2744;
+      margin: 12px 0 6px 0;
+      page-break-after: avoid;
+    }
+    p { margin: 0 0 8px 0; text-align: justify; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6px 0 12px 0;
+      font-size: 9.5pt;
+      page-break-inside: auto;
+    }
+    th, td {
+      border: 0.6pt solid #8a939c;
+      padding: 5px 7px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #0f2744;
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr { page-break-inside: avoid; }
+    .kv th {
+      width: 34%;
+      background: #e8eef4;
+      color: #0f2744;
+      font-weight: bold;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 9.5pt;
+    }
+    .muted { color: #5c6570; font-style: italic; }
+    .narrative {
+      background: #f6f3ed;
+      border-left: 3.5pt solid #c5a572;
+      padding: 8px 12px;
+      margin: 8px 0 12px 0;
+    }
+    .ai-badge {
+      display: inline-block;
+      font-size: 8pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0f2744;
+      border: 0.6pt solid #0f2744;
+      padding: 1px 6px;
+      margin-left: 6px;
+      font-weight: bold;
+    }
+    ul { margin: 4px 0 10px 18px; padding: 0; }
+    li { margin-bottom: 3px; }
+    .risk-high { color: #8a1c1c; font-weight: bold; }
+    .risk-medium { color: #8a5a12; font-weight: bold; }
+    .risk-low { color: #1b5e32; font-weight: bold; }
+    .sign-grid {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+    }
+    .sign-grid td {
+      border: none;
+      width: 50%;
+      padding: 12px 18px 0 0;
+      vertical-align: top;
+    }
+    .sign-line {
+      border-top: 0.7pt solid #1a1f24;
+      margin-top: 36px;
+      padding-top: 4px;
+      font-size: 9pt;
+    }
+    .disclaimer {
+      margin-top: 16px;
+      padding: 8px 10px;
+      border: 0.7pt solid #8a5a12;
+      background: #fbf6ea;
+      font-size: 8.5pt;
+    }
+    .toc { font-size: 10pt; }
+    .toc td { border: none; padding: 2px 0; }
+    .toc .dots { color: #8a939c; }
+    .footer-note { font-size: 8.5pt; color: #5c6570; margin-top: 10px; }
+    .clear { clear: both; }
+  </style>
+</head>
+<body>
+  <div class="letterhead-gold"></div>
+  <div class="letterhead">
+    <div class="classification">Confidential</div>
+    <p class="org-name">DentAcademy</p>
+    <p class="org-sub">Automotive Workshop · Apprenticeship Programme · Lebowakgomo, Limpopo, South Africa</p>
+    <p class="org-sub">Issued via the DentAcademy Management Portal</p>
+    <div class="clear"></div>
+  </div>
+
+  <h1>Individual Apprentice Progress Report</h1>
+  <p class="issued">Official training record for internal management use</p>
+
+  <table class="kv">
+    <tr><th>Report title</th><td>{{ document_title }}</td></tr>
+    <tr><th>Report reference</th><td>{{ report_ref }}</td></tr>
+    <tr><th>Classification</th><td>CONFIDENTIAL — authorised staff only</td></tr>
+    <tr><th>Host organisation</th><td>DentAcademy</td></tr>
+    <tr><th>Date of issue</th><td>{{ issued_at }}</td></tr>
+    <tr><th>Prepared by</th><td>{{ prepared_by }}{% if prepared_role %} ({{ prepared_role }}){% endif %}</td></tr>
+    <tr><th>Reporting system</th><td>DentAcademy Management Portal</td></tr>
+  </table>
+
+  <h2>1. Purpose of this report</h2>
+  <p>
+    This report consolidates the official apprenticeship record of the named learner, including
+    personal and education particulars, mentor assignment, attendance, module progress,
+    workplace evaluations, and the latest AI risk assessment. It is intended to support
+    supervision, mentoring and programme administration. It is not a disciplinary charge sheet
+    and does not replace professional human judgement.
+  </p>
+
+  <h2>2. Apprentice identification</h2>
+  <table class="kv">
+    <tr><th>Full name</th><td>{{ apprentice.full_name }}</td></tr>
+    <tr><th>Apprentice number</th><td>{{ apprentice.apprentice_id }}</td></tr>
+    <tr><th>Identity number</th><td>{{ apprentice.id_number }}</td></tr>
+    <tr><th>Date of birth</th><td>{{ apprentice.date_of_birth }}</td></tr>
+    <tr><th>Gender</th><td>{{ apprentice.gender }}</td></tr>
+    <tr><th>Programme status</th><td>{{ apprentice.status }}</td></tr>
+    <tr><th>Date registered</th><td>{{ apprentice.registered_at }}</td></tr>
+    <tr><th>Record created</th><td>{{ apprentice.created_at }}</td></tr>
+  </table>
+
+  <h2>3. Contact particulars</h2>
+  <table class="kv">
+    <tr><th>Email</th><td>{{ apprentice.email }}</td></tr>
+    <tr><th>Contact number</th><td>{{ apprentice.contact_number }}</td></tr>
+    <tr><th>Residential address</th><td>{{ apprentice.address }}</td></tr>
+  </table>
+
+  <h2>4. Education background</h2>
+  {% if education %}
+  <table class="kv">
+    <tr><th>Qualification type</th><td>{{ education.qualification_type }}</td></tr>
+    <tr><th>Institution</th><td>{{ education.institution_name }}</td></tr>
+    <tr><th>Academic average</th><td>{{ education.average_mark }}</td></tr>
+  </table>
+  {% if education.subjects %}
+  <table>
+    <thead>
+      <tr><th>Subject</th><th>Mark (%)</th></tr>
+    </thead>
+    <tbody>
+      {% for s in education.subjects %}
+      <tr><td>{{ s.name }}</td><td>{{ s.mark }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% else %}
+  <p class="muted">No education record has been captured for this apprentice.</p>
+  {% endif %}
+
+  <h2>5. Mentor assignment</h2>
+  {% if mentors %}
+  <table>
+    <thead>
+      <tr>
+        <th>Mentor</th>
+        <th>Specialisation</th>
+        <th>Contact</th>
+        <th>Assigned</th>
+        <th>Current</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in mentors %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.specialisation }}</td>
+        <td>{{ m.contact }}</td>
+        <td>{{ m.assigned_date }}</td>
+        <td>{{ m.current }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No mentor is currently assigned on the register.</p>
+  {% endif %}
+
+  <h2>6. Attendance record</h2>
+  <table class="kv">
+    <tr><th>Average attendance rate</th><td>{{ attendance.average }}</td></tr>
+    <tr><th>Periods recorded</th><td>{{ attendance.period_count }}</td></tr>
+  </table>
+  {% if attendance.rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Period</th>
+        <th>Days expected</th>
+        <th>Days present</th>
+        <th>Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in attendance.rows %}
+      <tr>
+        <td>{{ a.period }}</td>
+        <td>{{ a.days_expected }}</td>
+        <td>{{ a.days_present }}</td>
+        <td>{{ a.rate }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No attendance periods have been captured.</p>
+  {% endif %}
+
+  <h2>7. Module progress</h2>
+  <table class="kv">
+    <tr><th>Modules completed</th><td>{{ modules.completed }} / {{ modules.total }} ({{ modules.completion_pct }})</td></tr>
+    <tr><th>Average assessment score</th><td>{{ modules.average_score }}</td></tr>
+    <tr><th>Performance standing</th><td>{{ summary.performance_status }}</td></tr>
+  </table>
+  {% if modules.rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Module</th>
+        <th>Category</th>
+        <th>Status</th>
+        <th>Score</th>
+        <th>Pass mark</th>
+        <th>Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in modules.rows %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.category }}</td>
+        <td>{{ m.status }}</td>
+        <td>{{ m.score }}</td>
+        <td>{{ m.pass_mark }}</td>
+        <td>{{ m.completion_date }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No modules are currently listed on the programme catalogue.</p>
+  {% endif %}
+
+  <h2>8. Workplace evaluations</h2>
+  <table class="kv">
+    <tr><th>Evaluations on file</th><td>{{ evaluations.total }}</td></tr>
+    <tr><th>Approved</th><td>{{ evaluations.approved_count }}</td></tr>
+    <tr><th>Pending approval</th><td>{{ evaluations.pending_count }}</td></tr>
+    <tr><th>Approved average (overall)</th><td>{{ evaluations.average }} / 5.00</td></tr>
+  </table>
+  {% if evaluations.dimension_averages %}
+  <h3>Average scores by competency (approved evaluations)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Discipline</th>
+        <th>Commitment</th>
+        <th>Willingness</th>
+        <th>Teamwork</th>
+        <th>Time management</th>
+        <th>Professional conduct</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ evaluations.dimension_averages.discipline }}</td>
+        <td>{{ evaluations.dimension_averages.commitment }}</td>
+        <td>{{ evaluations.dimension_averages.willingness }}</td>
+        <td>{{ evaluations.dimension_averages.teamwork }}</td>
+        <td>{{ evaluations.dimension_averages.time_management }}</td>
+        <td>{{ evaluations.dimension_averages.professional_conduct }}</td>
+      </tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if evaluations.rows %}
+  {% for e in evaluations.rows %}
+  <h3>Evaluation {{ e.number }} — {{ e.submitted_at }}</h3>
+  <table class="kv">
+    <tr><th>Mentor</th><td>{{ e.mentor }}</td></tr>
+    <tr><th>Overall score</th><td>{{ e.overall_score }} / 5.00</td></tr>
+    <tr><th>Approval status</th><td>{{ e.approval }}</td></tr>
+    <tr><th>Discipline</th><td>{{ e.discipline }}</td></tr>
+    <tr><th>Commitment</th><td>{{ e.commitment }}</td></tr>
+    <tr><th>Willingness</th><td>{{ e.willingness }}</td></tr>
+    <tr><th>Teamwork</th><td>{{ e.teamwork }}</td></tr>
+    <tr><th>Time management</th><td>{{ e.time_management }}</td></tr>
+    <tr><th>Professional conduct</th><td>{{ e.professional_conduct }}</td></tr>
+    <tr><th>Mentor comments</th><td>{% if e.comments %}{{ e.comments }}{% else %}<span class="muted">No comments recorded.</span>{% endif %}</td></tr>
+  </table>
+  {% endfor %}
+  {% else %}
+  <p class="muted">No workplace evaluations have been submitted.</p>
+  {% endif %}
+
+  <h2>9. Artificial intelligence risk assessment</h2>
+  {% if prediction %}
+  <p>
+    The figures below are model estimates generated to assist monitoring. They are not
+    findings of fact and must not be used as the sole basis for a decision affecting the apprentice.
+  </p>
+  <table class="kv">
+    <tr><th>Model version</th><td>{{ prediction.model_version }}</td></tr>
+    <tr><th>Generated at</th><td>{{ prediction.generated_at }}</td></tr>
+    <tr><th>Completion likelihood</th><td>{{ prediction.completion_likelihood }}</td></tr>
+    <tr>
+      <th>Dropout risk</th>
+      <td>
+        {% if prediction.risk_class == 'high' %}
+        <span class="risk-high">{{ prediction.dropout_risk }} — {{ prediction.risk_label }}</span>
+        {% elif prediction.risk_class == 'medium' %}
+        <span class="risk-medium">{{ prediction.dropout_risk }} — {{ prediction.risk_label }}</span>
+        {% elif prediction.risk_class == 'low' %}
+        <span class="risk-low">{{ prediction.dropout_risk }} — {{ prediction.risk_label }}</span>
+        {% else %}
+        {{ prediction.dropout_risk }}
+        {% endif %}
+      </td>
+    </tr>
+    <tr><th>Employment readiness</th><td>{{ prediction.employment_readiness }}</td></tr>
+    <tr><th>Model confidence</th><td>{{ prediction.confidence_score }}</td></tr>
+    <tr><th>Predictable</th><td>{{ prediction.predictable }}</td></tr>
+    <tr><th>Missing input fields</th><td>{{ prediction.missing_fields }}</td></tr>
+  </table>
+  {% else %}
+  <p class="muted">No AI prediction has been generated for this apprentice.</p>
+  {% endif %}
+
+  <h2>10. Workplace experience reporting (aggregates only)</h2>
+  <p>
+    Daily experience-chat submissions are confidential. This report records counts only
+    and does not reproduce original messages or private summaries.
+  </p>
+  <table class="kv">
+    <tr><th>Reports recorded</th><td>{{ experience.total }}</td></tr>
+    <tr><th>Classified as good</th><td>{{ experience.good }}</td></tr>
+    <tr><th>Classified as concerning</th><td>{{ experience.bad }}</td></tr>
+    <tr><th>Apprentice-misconduct flags</th><td>{{ experience.misconduct }}</td></tr>
+    <tr><th>Referred for human review</th><td>{{ experience.escalated }}</td></tr>
+  </table>
+
+  <h2>11. AI commentary <span class="ai-badge">{{ commentary.source_label }}</span></h2>
+  <p class="muted">
+    The following comments interpret the metrics in this report. They are advisory,
+    do not constitute a disciplinary finding, and must be read with mentor and supervisor judgement.
+  </p>
+
+  <h3>Executive summary</h3>
+  <div class="narrative">
+    <p>{{ commentary.executive_summary }}</p>
+  </div>
+
+  <h3>Observations</h3>
+  <ul>
+    {% for item in commentary.observations %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Strengths</h3>
+  <ul>
+    {% for item in commentary.strengths %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Areas of concern</h3>
+  <ul>
+    {% for item in commentary.areas_of_concern %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Recommendations</h3>
+  <ul>
+    {% for item in commentary.recommendations %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Overall comment</h3>
+  <div class="narrative">
+    <p>{{ commentary.overall_comment }}</p>
+  </div>
+
+  <h2>12. Declaration</h2>
+  <p>
+    I confirm that this report was generated from records held on the DentAcademy Management
+    Portal as at the date of issue. Identity numbers are partially masked. Confidential
+    daily experience reports are excluded except as aggregate counts.
+  </p>
+
+  <table class="sign-grid">
+    <tr>
+      <td>
+        <div class="sign-line">
+          Prepared by<br>
+          {{ prepared_by }}{% if prepared_role %}, {{ prepared_role }}{% endif %}<br>
+          Date: {{ issued_date }}
+        </div>
+      </td>
+      <td>
+        <div class="sign-line">
+          Authorised by (Supervisor / Administrator)<br>
+          Name: ________________________________<br>
+          Signature: ___________________________<br>
+          Date: ________________________________
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="disclaimer">
+    <strong>Disclaimer.</strong>
+    This report contains operational data and AI-generated estimates. Predictions of
+    completion, dropout risk and employment readiness are statistical indications only.
+    DentAcademy accepts no liability for decisions made solely
+    on the basis of this document. Authorised staff must apply professional judgement
+    before any intervention affecting an apprentice.
+  </div>
+  <p class="footer-note">
+    End of report — {{ report_ref }} — DentAcademy.
+  </p>
+</body>
+</html>

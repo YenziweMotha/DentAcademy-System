@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// Empty baseURL = same-origin /api/... paths (Vite/cloudflare proxy to backend).
+// Set VITE_API_URL only if the API is on a different origin.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || '',
   withCredentials: true,
 });
 

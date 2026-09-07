@@ -1,9 +1,12 @@
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonCard } from '../../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
-import Spinner from '../../components/ui/Spinner';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import AlertBanner from '../../components/ui/AlertBanner';
 
 const PROVINCES = [
   'Limpopo', 'Gauteng', 'Mpumalanga', 'North West',
@@ -83,22 +86,19 @@ export default function ApprenticeEdit() {
     }
   };
 
-  const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
+  const input = 'w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
+  const label = 'block text-sm font-medium text-ink mb-1';
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Edit Apprentice</h1>
-        <p className="text-sm text-gray-500 mt-1">Update personal details. The ID number cannot be changed.</p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Edit Apprentice" subtitle="Update personal details. The ID number cannot be changed." />
 
-      {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>}
+      {error && <AlertBanner type="error" message={error} className="mb-6" />}
 
       {loading ? (
         <SkeletonCard />
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
+        <Card as="form" onSubmit={handleSubmit} className="animate-fade-up">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={label}>First Name *</label>
@@ -145,20 +145,14 @@ export default function ApprenticeEdit() {
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={() => navigate(`/apprentices/${apprenticeId}`)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+            <Button type="button" onClick={() => navigate(`/apprentices/${apprenticeId}`)} variant="secondary">
               Cancel
-            </button>
-            <button type="submit" disabled={saving} className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
-              {saving ? (
-                <span className="inline-flex items-center gap-2">
-                  <Spinner size="sm" /> Saving...
-                </span>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
+            </Button>
+            <Button type="submit" loading={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
-        </form>
+        </Card>
       )}
     </div>
   );

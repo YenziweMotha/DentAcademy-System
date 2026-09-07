@@ -1,45 +1,24 @@
 """
 Feature engineering pipeline for DentAcademy AI predictions.
 
-Builds the feature vector from real, queryable data as specified in FR-29/SDD §5.2:
-  - academic_avg_mark: mean mark across all subjects
-  - module_completion_pct: completed modules / total active modules * 100
-  - avg_assessment_score: mean of all completed module assessment scores
-  - attendance_rate: mean attendance_rate across all periods
-  - avg_discipline: mean discipline rating across approved evaluations
-  - avg_commitment: mean commitment rating
-  - avg_willingness: mean willingness to learn rating
-  - avg_teamwork: mean teamwork rating
-  - avg_time_management: mean time management rating
-  - avg_professional_conduct: mean professional conduct rating
-  - eval_count: number of evaluations (used for minimum-data gate)
-  - eval_trend: slope of overall_score over time (positive = improving)
-
-The exact vector is persisted into feature_snapshot_json for retrospective comparison (FR-30/FR-32).
+Builds the feature vector from real, queryable data as specified in FR-29/SDD §5.2.
+The exact vector is persisted into feature_snapshot_json (FR-30/FR-32).
 """
 
+from typing import Any, Dict, List, Tuple
+
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from models.education import Education
-from models.module import Module, ModuleProgress
-from models.evaluation import Evaluation
+
+from ai.scoring import FEATURE_NAMES, feature_dict_to_vector
 from models.attendance import Attendance
-from typing import Tuple, List, Dict, Any
+from models.education import Education
+from models.evaluation import Evaluation
+from models.module import Module, ModuleProgress
 
-
-FEATURE_NAMES = [
-    "academic_avg_mark",
-    "module_completion_pct",
-    "avg_assessment_score",
-    "attendance_rate",
-    "avg_discipline",
-    "avg_commitment",
-    "avg_willingness",
-    "avg_teamwork",
-    "avg_time_management",
-    "avg_professional_conduct",
-    "eval_count",
-    "eval_trend",
+__all__ = [
+    "FEATURE_NAMES",
+    "build_feature_vector",
+    "feature_dict_to_vector",
 ]
 
 
@@ -65,7 +44,6 @@ def build_feature_vector(
     """
     missing = []
 
-    # ── Academic average ────────────────────────────────────────────────────
     edu = db.query(Education).filter(Education.apprentice_id == apprentice_id).first()
     if edu and edu.subjects:
         marks = [float(s.mark) for s in edu.subjects]
@@ -76,49 +54,55 @@ def build_feature_vector(
         academic_avg = 0.0
         missing.append("education_records")
 
-    # ── Module completion ────────────────────────────────────────────────────
-    total_modules = db.query(Module).filter(Module.is_active == True).count()
+    total_modules = db.query(Module).filter(Module.is_active == True).count()  # noqa: E712
     completed = db.query(ModuleProgress).filter(
         ModuleProgress.apprentice_id == apprentice_id,
         ModuleProgress.status == "Completed",
     ).count()
     completion_pct = (completed / total_modules * 100) if total_modules > 0 else 0.0
 
-    if completion_pct == 0.0:
+    progress_count = (
+        db.query(ModuleProgress)
+        .filter(ModuleProgress.apprentice_id == apprentice_id)
+        .count()
+    )
+    if progress_count == 0:
         missing.append("module_progress")
 
-    # ── Assessment scores ────────────────────────────────────────────────────
     progress_rows = db.query(ModuleProgress).filter(
         ModuleProgress.apprentice_id == apprentice_id,
         ModuleProgress.assessment_score.isnot(None),
     ).all()
     avg_assessment = (
         sum(float(p.assessment_score) for p in progress_rows) / len(progress_rows)
-        if progress_rows else 0.0
+        if progress_rows
+        else 0.0
     )
 
-    # ── Attendance ───────────────────────────────────────────────────────────
     att_records = db.query(Attendance).filter(
         Attendance.apprentice_id == apprentice_id
     ).all()
     attendance_rate = (
         sum(float(a.attendance_rate) for a in att_records) / len(att_records)
-        if att_records else 0.0
+        if att_records
+        else 0.0
     )
     if not att_records:
         missing.append("attendance_records")
 
-    # ── Evaluations ──────────────────────────────────────────────────────────
     evals = (
         db.query(Evaluation)
-        .filter(Evaluation.apprentice_id == apprentice_id)
+        .filter(
+            Evaluation.apprentice_id == apprentice_id,
+            Evaluation.approved == True,  # noqa: E712
+        )
         .order_by(Evaluation.submitted_at.asc())
         .all()
     )
     eval_count = len(evals)
 
     if eval_count < 2:
-        missing.append("evaluations (minimum 2 required)")
+        missing.append("evaluations (minimum 2 approved required)")
 
     avg_discipline = sum(e.discipline for e in evals) / eval_count if evals else 0.0
     avg_commitment = sum(e.commitment for e in evals) / eval_count if evals else 0.0
@@ -146,8 +130,3 @@ def build_feature_vector(
     }
 
     return feature_dict, missing
-
-
-def feature_dict_to_vector(feature_dict: Dict[str, Any]) -> List[float]:
-    """Convert feature dict to ordered list for model input."""
-    return [float(feature_dict.get(name, 0.0)) for name in FEATURE_NAMES]

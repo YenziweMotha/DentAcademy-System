@@ -1,5 +1,21 @@
 PDF_MAGIC = b"%PDF"
 
+REQUIRED_APPRENTICE_SECTIONS = [
+    "Individual Apprentice Progress Report",
+    "CONFIDENTIAL",
+    "Apprentice identification",
+    "Contact particulars",
+    "Education background",
+    "Mentor assignment",
+    "Attendance record",
+    "Module progress",
+    "Workplace evaluations",
+    "Artificial intelligence risk assessment",
+    "AI commentary",
+    "Declaration",
+    "Disclaimer",
+]
+
 
 def test_programme_summary_pdf(client, admin_token):
     res = client.get(
@@ -19,6 +35,45 @@ def test_apprentice_report_pdf(client, admin_token):
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/pdf"
     assert res.content.startswith(PDF_MAGIC)
+
+
+def test_apprentice_report_html_contains_formal_sections():
+    from database import SessionLocal
+    from services.report_service import render_apprentice_html
+
+    db = SessionLocal()
+    try:
+        html = render_apprentice_html(
+            1, db, prepared_by="Test Admin", prepared_role="Administrator"
+        )
+    finally:
+        db.close()
+
+    for section in REQUIRED_APPRENTICE_SECTIONS:
+        assert section in html
+    assert "Test Admin" in html
+    assert "DA-APR-0001-" in html
+    assert "executive summary" in html.lower() or "Executive summary" in html
+
+
+def test_programme_summary_html_contains_formal_sections():
+    from database import SessionLocal
+    from services.report_service import render_programme_html
+
+    db = SessionLocal()
+    try:
+        html = render_programme_html(
+            db, prepared_by="Test Admin", prepared_role="Administrator"
+        )
+    finally:
+        db.close()
+
+    assert "Programme Summary Report" in html
+    assert "CONFIDENTIAL" in html
+    assert "AI executive commentary" in html
+    assert "Apprentice register" in html
+    assert "Declaration" in html
+    assert "Test Admin" in html
 
 
 def test_apprentice_report_missing_returns_404(client, admin_token):

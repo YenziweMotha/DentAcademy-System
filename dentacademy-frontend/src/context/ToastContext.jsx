@@ -1,5 +1,5 @@
+import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -16,15 +16,20 @@ export const ToastProvider = ({ children }) => {
   const timers = useRef({});
 
   const dismiss = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
+    );
     clearTimeout(timers.current[id]);
-    delete timers.current[id];
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+      delete timers.current[id];
+    }, 180);
   }, []);
 
   const push = useCallback(
     (type, message, duration = 4000) => {
       const id = Date.now() + Math.random();
-      setToasts((prev) => [...prev, { id, type, message }]);
+      setToasts((prev) => [...prev.slice(-4), { id, type, message, leaving: false }]);
       timers.current[id] = setTimeout(() => dismiss(id), duration);
     },
     [dismiss]
@@ -35,44 +40,58 @@ export const ToastProvider = ({ children }) => {
       success: (msg) => push('success', msg),
       error: (msg) => push('error', msg, 6000),
       info: (msg) => push('info', msg),
+      warning: (msg) => push('warning', msg, 5000),
     },
     [push]
   );
 
   const styles = {
-    success: 'bg-emerald-600 text-white',
-    error: 'bg-red-600 text-white',
-    info: 'bg-slate-800 text-white',
+    success:
+      'bg-emerald-600 text-white border-emerald-500/30 dark:bg-emerald-700',
+    error: 'bg-rose-600 text-white border-rose-500/30 dark:bg-rose-700',
+    info: 'bg-slate-800 text-white border-slate-700 dark:bg-slate-700',
+    warning: 'bg-amber-600 text-white border-amber-500/30 dark:bg-amber-700',
   };
 
   const icons = {
-    success: <CheckCircle2 size={18} className="shrink-0" />,
-    error: <XCircle size={18} className="shrink-0" />,
-    info: <Info size={18} className="shrink-0" />,
+    success: CheckCircle2,
+    error: XCircle,
+    info: Info,
+    warning: AlertTriangle,
   };
 
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            role="status"
-            className={`toast-enter flex items-start gap-2.5 px-4 py-3 rounded-lg shadow-lg ${styles[t.type]}`}
-          >
-            {icons[t.type]}
-            <p className="text-sm leading-snug flex-1 break-words">{t.message}</p>
-            <button
-              type="button"
-              onClick={() => dismiss(t.id)}
-              className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
-              aria-label="Dismiss notification"
+      <div
+        className="fixed top-4 right-4 z-[60] flex flex-col gap-2 w-[min(22rem,calc(100vw-2rem))]"
+        aria-live="polite"
+      >
+        {toasts.map((t) => {
+          const Icon = icons[t.type] || Info;
+          return (
+            <div
+              key={t.id}
+              role="status"
+              className={`flex items-start gap-2.5 px-4 py-3 rounded-xl shadow-lift border ${styles[t.type]} ${
+                t.leaving ? 'animate-toast-out' : 'animate-toast-in'
+              }`}
             >
-              <X size={16} />
-            </button>
-          </div>
-        ))}
+              <Icon size={18} className="shrink-0 mt-0.5" />
+              <p className="text-sm leading-snug flex-1 break-words font-medium">
+                {t.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => dismiss(t.id)}
+                className="shrink-0 opacity-70 hover:opacity-100 transition-opacity p-0.5 rounded"
+                aria-label="Dismiss notification"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

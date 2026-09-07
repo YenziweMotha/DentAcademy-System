@@ -2,39 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --surface: 242 245 250;
+  --surface-raised: 255 255 255;
+  --surface-muted: 232 237 246;
+  --ink: 10 22 40;
+  --ink-muted: 71 85 105;
+  --ink-subtle: 148 163 184;
+  --line: 220 227 238;
+  color-scheme: light;
+}
+
 @layer base {
-  body {
-    @apply text-slate-900 antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "shnt";
+  html {
+    scroll-behavior: smooth;
   }
 
-  /* Custom Scrollbar */
+  body {
+    background-color: rgb(var(--surface));
+    background-image:
+      radial-gradient(1200px 600px at 0% -10%, rgb(11 95 255 / 0.08), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgb(255 107 44 / 0.06), transparent 50%),
+      radial-gradient(800px 400px at 50% 100%, rgb(59 130 246 / 0.05), transparent 55%);
+    background-attachment: fixed;
+    color: rgb(var(--ink));
+    font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "ss02";
+  }
+
+  ::selection {
+    background-color: rgb(11 95 255 / 0.18);
+    color: #0747C2;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
+
   ::-webkit-scrollbar-track {
-    @apply bg-slate-100;
+    background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+    background: #c5d0e0;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9aabc4;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    background-color: rgb(255 255 255 / 0.78);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgb(255 255 255 / 0.65);
+  }
+
+  .page-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fade-up 320ms ease-out both;
+  }
+
+  .card-surface {
+    background-color: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--line));
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px rgb(10 22 40 / 0.04), 0 8px 24px rgb(10 22 40 / 0.05);
+  }
+
+  .card-interactive {
+    background-color: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--line));
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px rgb(10 22 40 / 0.04), 0 8px 24px rgb(10 22 40 / 0.05);
+    transition: all 250ms ease-out;
+  }
+
+  .card-interactive:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgb(11 95 255 / 0.12);
+    border-color: rgb(11 95 255 / 0.28);
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    color: rgb(var(--ink));
+  }
+
+  .meta-text {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgb(var(--ink-muted));
+  }
+
+  .focus-ring:focus {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(11 95 255 / 0.45);
+  }
+
+  .stagger-children > * {
+    animation: fade-up 360ms ease-out both;
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 45ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 90ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 135ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 180ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 225ms; }
+  .stagger-children > *:nth-child(7) { animation-delay: 270ms; }
+  .stagger-children > *:nth-child(8) { animation-delay: 315ms; }
+  .stagger-children > *:nth-child(9) { animation-delay: 360ms; }
+  .stagger-children > *:nth-child(10) { animation-delay: 405ms; }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: rgb(220 227 238 / 0.85);
+  }
+
+  .skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.65),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+
+  .app-atmosphere {
+    position: relative;
+  }
+
+  .app-atmosphere::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(700px 280px at 15% 0%, rgb(11 95 255 / 0.07), transparent 60%),
+      radial-gradient(500px 240px at 90% 10%, rgb(255 107 44 / 0.05), transparent 55%);
+    z-index: 0;
   }
 }
 
+@layer utilities {
+  .toast-enter {
+    animation: toast-in 0.25s ease-out;
+  }
+
+  .shake {
+    animation: shake 0.4s ease-in-out;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 @keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(16px) scale(0.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(12px); }
 }
 
 @keyframes shake {
@@ -45,10 +208,20 @@
   80% { transform: translateX(4px); }
 }
 
-.toast-enter {
-  animation: toast-in 0.25s ease-out;
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
 }
 
-.shake {
-  animation: shake 0.4s ease-in-out;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
+
+.animate-fade-in { animation: fade-in 220ms ease-out both; }
+.animate-fade-up { animation: fade-up 320ms ease-out both; }
+.animate-scale-in { animation: scale-in 200ms ease-out both; }
+.animate-toast-in { animation: toast-in 250ms ease-out both; }
+.animate-toast-out { animation: toast-out 180ms ease-in both; }
+.animate-shake { animation: shake 400ms ease-in-out; }
+.animate-shimmer { animation: shimmer 1.4s infinite; }
+.animate-float { animation: float 6s ease-in-out infinite; }

@@ -2,57 +2,51 @@ import Logo from '../../components/ui/Logo';
 
 export default function AuthShell({ title, subtitle, children }) {
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand-dark via-brand to-emerald-700 flex-col justify-between p-12 text-white">
-        <div className="flex items-center gap-3">
-          <Logo size={44} light />
-          <div>
-            <h1 className="text-2xl font-bold leading-tight">DentAcademy</h1>
-            <p className="text-emerald-100 text-sm">Apprenticeship Program</p>
-          </div>
-        </div>
+    <div className="min-h-screen relative overflow-hidden bg-[#07111F]">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#07111F] via-[#0B1F3A] to-[#0B5FFF]/70" />
+      <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-brand/30 blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-accent/25 blur-3xl" />
 
-        <div className="space-y-8">
-          <h2 className="text-4xl font-bold leading-tight max-w-md">
-            Shaping the next generation of skilled professionals.
-          </h2>
-          <p className="text-emerald-50 text-sm max-w-md leading-relaxed">
-            Aspiring professionals completing accredited
-            training through structured workplace apprenticeships.
-          </p>
-          <ul className="space-y-3 text-emerald-50 text-sm">
-            <li className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Learn under the guidance of experienced, registered workshop mentors
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              Build the hands-on competence and professionalism the industry trusts
-            </li>
-          </ul>
-        </div>
-
-        <p className="text-emerald-200/70 text-xs">
-          © {new Date().getFullYear()} DentAcademy. All rights reserved.
-        </p>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
-            <Logo size={40} />
+      <div className="relative z-10 min-h-screen grid lg:grid-cols-2">
+        <div className="hidden lg:flex flex-col justify-between p-12 text-white">
+          <div className="flex items-center gap-3">
+            <Logo size={44} light />
             <div>
-              <h1 className="text-2xl font-bold text-gray-800 leading-tight">
-                DentAcademy
-              </h1>
-              <p className="text-gray-500 text-sm">Apprenticeship Program</p>
+              <h1 className="text-2xl font-extrabold leading-tight">DentAcademy</h1>
+              <p className="text-blue-100/80 text-sm">Apprenticeship Program</p>
             </div>
           </div>
 
-          <div className="bg-white py-8 px-6 sm:px-10 shadow sm:rounded-2xl">
-            <h2 className="text-xl font-semibold text-gray-800 mb-1">{title}</h2>
-            <p className="text-sm text-gray-500 mb-6">{subtitle}</p>
-            {children}
+          <div className="space-y-5 max-w-md">
+            <h2 className="text-4xl font-extrabold leading-tight tracking-tight">
+              A portal that looks as sharp as the craft it supports.
+            </h2>
+            <p className="text-blue-50/80 text-sm leading-relaxed">
+              Structured apprenticeships, clear progress, and mentor guidance —
+              all in one place.
+            </p>
+          </div>
+
+          <p className="text-blue-200/55 text-xs">
+            © {new Date().getFullYear()} DentAcademy. All rights reserved.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-md">
+            <div className="lg:hidden flex items-center gap-3 justify-center mb-8 text-white">
+              <Logo size={40} light />
+              <div>
+                <h1 className="text-2xl font-extrabold leading-tight">DentAcademy</h1>
+                <p className="text-blue-100/80 text-sm">Apprenticeship Program</p>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] bg-white p-7 sm:p-9 shadow-[0_30px_80px_rgb(0_0_0_/_0.3)] animate-fade-up">
+              <h2 className="text-xl font-extrabold text-ink mb-1 tracking-tight">{title}</h2>
+              <p className="text-sm text-ink-muted mb-6">{subtitle}</p>
+              {children}
+            </div>
           </div>
         </div>
       </div>

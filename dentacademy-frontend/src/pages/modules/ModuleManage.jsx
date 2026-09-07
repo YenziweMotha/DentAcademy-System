@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card, { CardHeader } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
+import { Plus } from 'lucide-react';
 
 export default function ModuleManage() {
   const toast = useToast();
@@ -74,29 +81,21 @@ export default function ModuleManage() {
     }
   };
 
-  const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
+  const input = 'w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
+  const label = 'block text-sm font-medium text-ink mb-1';
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Modules</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage the training modules that make up the programme. Inactive modules are excluded from completion calculations.
-          </p>
-        </div>
-
-        <button type="button" onClick={() => setShowForm((v) => !v)} className="mt-4 md:mt-0 bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark">
+    <div className="page-shell">
+      <PageHeader title="Modules" subtitle="Manage training modules. Inactive modules are excluded from completion calculations." actions={
+        <Button type="button" onClick={() => setShowForm((v) => !v)} icon={showForm ? undefined : Plus} variant={showForm ? 'secondary' : 'primary'}>
           {showForm ? 'Cancel' : 'Add Module'}
-        </button>
-      </div>
+        </Button>} />
 
-      {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>}
+      {error && <AlertBanner type="error" message={error} className="mb-6" />}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">New Module</h2>
+        <Card as="form" onSubmit={handleSubmit} className="mb-6 animate-fade-up">
+          <CardHeader title="New Module" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -118,46 +117,44 @@ export default function ModuleManage() {
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={() => setShowForm(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+            <Button type="button" onClick={() => setShowForm(false)} variant="secondary">
               Cancel
-            </button>
-            <button type="submit" disabled={saving || !formData.module_name.trim()} className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
+            </Button>
+            <Button type="submit" loading={saving} disabled={!formData.module_name.trim()}>
               {saving ? 'Creating...' : 'Create Module'}
-            </button>
+            </Button>
           </div>
-        </form>
+        </Card>
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <Card padding={false}>
         {loading ? (
           <SkeletonTable rows={4} cols={4} />
         ) : modules.length === 0 ? (
-          <div className="p-6 text-gray-500">No modules created yet.</div>
+          <EmptyState title="No modules yet" description="Create the first training module to begin tracking progress." action={<Button onClick={() => setShowForm(true)} icon={Plus}>Add Module</Button>} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-surface-muted/60">
                 <tr>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Mark</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Module</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Category</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Pass Mark</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Status</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-line">
                 {modules.map((mod) => (
                   <tr key={mod.module_id}>
                     <td className="p-4">
-                      <p className="font-medium text-gray-800">{mod.module_name}</p>
-                      {mod.description && <p className="text-sm text-gray-500">{mod.description}</p>}
+                      <p className="font-medium text-ink">{mod.module_name}</p>
+                      {mod.description && <p className="text-sm text-ink-muted">{mod.description}</p>}
                     </td>
-                    <td className="p-4 text-gray-600">{mod.category || 'N/A'}</td>
-                    <td className="p-4 text-gray-600">{mod.pass_mark}%</td>
+                    <td className="p-4 text-ink-muted">{mod.category || 'N/A'}</td>
+                    <td className="p-4 text-ink-muted">{mod.pass_mark}%</td>
                     <td className="p-4">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${mod.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {mod.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                      <StatusBadge status={mod.is_active ? 'ACTIVE' : 'INACTIVE'} />
                     </td>
                     <td className="p-4">
                       <button type="button" onClick={() => toggleActive(mod)} className="text-brand hover:underline text-sm">
@@ -170,7 +167,7 @@ export default function ModuleManage() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

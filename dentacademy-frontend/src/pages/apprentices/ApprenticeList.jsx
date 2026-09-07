@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Plus, Users as UsersIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Users as UsersIcon } from 'lucide-react';
 import api from '../../api/axios';
 import PageHeader from '../../components/ui/PageHeader';
 import EmptyState from '../../components/ui/EmptyState';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import { useToast } from '../../context/ToastContext';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import Avatar from '../../components/ui/Avatar';
+import ProgressBar from '../../components/ui/ProgressBar';
+import SearchBar from '../../components/ui/SearchBar';
+import Pagination from '../../components/ui/Pagination';
+import ErrorState from '../../components/ui/ErrorState';
+import AlertBanner from '../../components/ui/AlertBanner';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function ApprenticeList() {
   const [apprentices, setApprentices] = useState([]);
@@ -15,6 +25,8 @@ export default function ApprenticeList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [statusLoading, setStatusLoading] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
   const limit = 10;
 
   const navigate = useNavigate();
@@ -24,7 +36,6 @@ export default function ApprenticeList() {
     try {
       setLoading(true);
       setError('');
-
       const response = await api.get('/api/apprentices', {
         params: {
           skip: (page - 1) * limit,
@@ -32,7 +43,6 @@ export default function ApprenticeList() {
           search: search || undefined,
         },
       });
-
       setApprentices(response.data.items || []);
       setTotal(response.data.total || 0);
     } catch (err) {
@@ -47,20 +57,9 @@ export default function ApprenticeList() {
     loadApprentices();
   }, [page, search]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(1);
-    setSearch(searchInput.trim());
-  };
-
-  const clearSearch = () => {
-    setSearchInput('');
-    setSearch('');
-    setPage(1);
-  };
-
   const toggleStatus = async (apprentice) => {
     try {
+      setStatusLoading(apprentice.apprentice_id);
       const isDeactivating = apprentice.status === 'ACTIVE';
       await api.patch(
         `/api/apprentices/${apprentice.apprentice_id}/${
@@ -72,235 +71,296 @@ export default function ApprenticeList() {
           ? `${apprentice.first_name} ${apprentice.surname} deactivated.`
           : `${apprentice.first_name} ${apprentice.surname} activated.`
       );
+      setConfirmTarget(null);
       loadApprentices();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to update status.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
+  const requestStatusToggle = (apprentice) => {
+    if (apprentice.status === 'ACTIVE') {
+      setConfirmTarget(apprentice);
+    } else {
+      toggleStatus(apprentice);
     }
   };
 
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Apprentices"
         subtitle="Register, search and manage apprentices."
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/dashboard/admin' },
+          { label: 'Apprentices' },
+        ]}
         actions={
-          <button
-            type="button"
-            onClick={() => navigate('/apprentices/create')}
-            className="inline-flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark transition-colors shadow-sm"
-          >
-            <Plus size={16} /> Register Apprentice
-          </button>
+          <Button icon={Plus} onClick={() => navigate('/apprentices/create')}>
+            Register Apprentice
+          </Button>
         }
       />
 
-      <form
-        onSubmit={handleSearch}
-        className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-3"
-      >
-        <div className="relative flex-1">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name or ID number..."
-            className="w-full border border-gray-300 rounded-md pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
-          />
-        </div>
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 bg-brand text-white px-5 py-2 rounded-md hover:bg-brand-dark transition-colors"
-        >
-          <Search size={15} /> Search
-        </button>
-        {search && (
-          <button
-            type="button"
-            onClick={clearSearch}
-            className="inline-flex items-center gap-2 bg-gray-200 text-gray-700 px-5 py-2 rounded-md hover:bg-gray-300 transition-colors"
-          >
-            <X size={15} /> Clear
-          </button>
-        )}
-      </form>
+      <SearchBar
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        onSubmit={(e) => {
+          e.preventDefault();
+          setPage(1);
+          setSearch(searchInput.trim());
+        }}
+        onClear={() => {
+          setSearchInput('');
+          setSearch('');
+          setPage(1);
+        }}
+        placeholder="Search by name or ID number..."
+      />
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">
-          {error}
-        </div>
+        <AlertBanner type="error" message={error} onDismiss={() => setError('')} />
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+      <Card padding={false} className="overflow-hidden">
         {loading ? (
-          <SkeletonTable rows={6} cols={6} />
+          <SkeletonTable rows={6} cols={5} />
+        ) : error && apprentices.length === 0 ? (
+          <ErrorState description={error} onRetry={loadApprentices} />
         ) : apprentices.length === 0 ? (
           <EmptyState
             icon={UsersIcon}
             title={search ? 'No apprentices found' : 'No apprentices yet'}
             description={
               search
-                ? `No apprentices matching "${search}".`
+                ? `No apprentices matching “${search}”.`
                 : 'Register the first apprentice to get started.'
             }
             action={
               !search && (
-                <button
-                  type="button"
-                  onClick={() => navigate('/apprentices/create')}
-                  className="inline-flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark transition-colors"
-                >
-                  <Plus size={16} /> Register Apprentice
-                </button>
+                <Button icon={Plus} onClick={() => navigate('/apprentices/create')}>
+                  Register Apprentice
+                </Button>
               )
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ID Number</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Province</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Completion</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {apprentices.map((apprentice) => (
-                  <tr key={apprentice.apprentice_id}>
-                    <td className="p-4 font-medium text-gray-800">
-                      {apprentice.first_name} {apprentice.surname}
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {apprentice.id_number}
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {apprentice.province || 'N/A'}
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {apprentice.completion_pct ?? 0}%
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          apprentice.status === 'ACTIVE'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {apprentice.status}
-                      </span>
-                      {apprentice.is_registered === false && (
-                        <span className="mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                          Registration pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        {apprentice.is_registered === false && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(
-                                `/apprentices/${apprentice.apprentice_id}/register`
-                              )
-                            }
-                            className="text-amber-700 font-medium hover:underline text-sm"
-                          >
-                            Complete registration
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate(
-                              `/apprentices/${apprentice.apprentice_id}`
-                            )
-                          }
-                          className="text-brand hover:underline text-sm"
+          <>
+            {/* Desktop table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-surface-muted/60">
+                  <tr>
+                    {['Name', 'ID Number', 'Province', 'Completion', 'Status', 'Actions'].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="text-left px-5 py-3 text-[11px] font-semibold text-ink-subtle uppercase tracking-wider"
                         >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate(
-                              `/apprentices/${apprentice.apprentice_id}/edit`
-                            )
-                          }
-                          className="text-brand hover:underline text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleStatus(apprentice)}
-                          className={`hover:underline text-sm ${
-                            apprentice.status === 'ACTIVE'
-                              ? 'text-red-600'
-                              : 'text-green-600'
-                          }`}
-                        >
-                          {apprentice.status === 'ACTIVE'
-                            ? 'Deactivate'
-                            : 'Activate'}
-                        </button>
-                      </div>
-                    </td>
+                          {h}
+                        </th>
+                      )
+                    )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {apprentices.map((apprentice) => (
+                    <tr
+                      key={apprentice.apprentice_id}
+                      className="hover:bg-surface-muted/40 transition-colors"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            name={`${apprentice.first_name} ${apprentice.surname}`}
+                            size="sm"
+                          />
+                          <span className="font-semibold text-ink">
+                            {apprentice.first_name} {apprentice.surname}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-ink-muted">
+                        {apprentice.id_number}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-ink-muted">
+                        {apprentice.province || 'N/A'}
+                      </td>
+                      <td className="px-5 py-3.5 w-40">
+                        <ProgressBar
+                          progress={apprentice.completion_pct ?? 0}
+                          showLabel
+                        />
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <StatusBadge status={apprentice.status} />
+                          {apprentice.is_registered === false && (
+                            <StatusBadge status="REGISTRATION_PENDING" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {apprentice.is_registered === false && (
+                            <Button
+                              size="sm"
+                              variant="accent"
+                              onClick={() =>
+                                navigate(
+                                  `/apprentices/${apprentice.apprentice_id}/register`
+                                )
+                              }
+                            >
+                              Complete
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              navigate(`/apprentices/${apprentice.apprentice_id}`)
+                            }
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              navigate(`/apprentices/${apprentice.apprentice_id}/edit`)
+                            }
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            loading={statusLoading === apprentice.apprentice_id}
+                            className={
+                              apprentice.status === 'ACTIVE'
+                                ? '!text-rose-600'
+                                : '!text-emerald-600'
+                            }
+                            onClick={() => requestStatusToggle(apprentice)}
+                          >
+                            {apprentice.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="lg:hidden divide-y divide-line">
+              {apprentices.map((apprentice) => (
+                <div key={apprentice.apprentice_id} className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      name={`${apprentice.first_name} ${apprentice.surname}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-ink">
+                        {apprentice.first_name} {apprentice.surname}
+                      </p>
+                      <p className="text-sm text-ink-muted">
+                        {apprentice.id_number}
+                        {apprentice.province ? ` · ${apprentice.province}` : ''}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <StatusBadge status={apprentice.status} />
+                        {apprentice.is_registered === false && (
+                          <StatusBadge status="REGISTRATION_PENDING" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <ProgressBar progress={apprentice.completion_pct ?? 0} showLabel />
+                  <div className="flex flex-wrap gap-2">
+                    {apprentice.is_registered === false && (
+                      <Button
+                        size="sm"
+                        variant="accent"
+                        onClick={() =>
+                          navigate(
+                            `/apprentices/${apprentice.apprentice_id}/register`
+                          )
+                        }
+                      >
+                        Complete registration
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        navigate(`/apprentices/${apprentice.apprentice_id}`)
+                      }
+                    >
+                      View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        navigate(`/apprentices/${apprentice.apprentice_id}/edit`)
+                      }
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      loading={statusLoading === apprentice.apprentice_id}
+                      className={
+                        apprentice.status === 'ACTIVE'
+                          ? '!text-rose-600'
+                          : '!text-emerald-600'
+                      }
+                      onClick={() => requestStatusToggle(apprentice)}
+                    >
+                      {apprentice.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {!loading && totalPages > 1 && (
-          <div className="p-6 border-t flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
-              Showing{' '}
-              <span className="font-medium">
-                {(page - 1) * limit + 1}
-              </span>{' '}
-              to{' '}
-              <span className="font-medium">
-                {Math.min(page * limit, total)}
-              </span>{' '}
-              of <span className="font-medium">{total}</span> apprentices
-            </p>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="inline-flex items-center gap-1 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
-              >
-                <ChevronLeft size={15} /> Previous
-              </button>
-              <span className="text-sm text-gray-600">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="inline-flex items-center gap-1 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
-              >
-                Next <ChevronRight size={15} />
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPrev={() => setPage((p) => p - 1)}
+            onNext={() => setPage((p) => p + 1)}
+          />
         )}
-      </div>
+      </Card>
+
+      <ConfirmDialog
+        isOpen={!!confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        onConfirm={() => confirmTarget && toggleStatus(confirmTarget)}
+        title="Deactivate apprentice?"
+        description={
+          confirmTarget
+            ? `Deactivate ${confirmTarget.first_name} ${confirmTarget.surname}? They will no longer appear as active in the programme.`
+            : ''
+        }
+        confirmLabel="Deactivate"
+        variant="danger"
+        loading={!!confirmTarget && statusLoading === confirmTarget.apprentice_id}
+      />
     </div>
   );
 }

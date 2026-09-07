@@ -4,7 +4,6 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import Spinner from '../../components/ui/Spinner';
 import AlertBanner from '../../components/ui/AlertBanner';
 import { useToast } from '../../context/ToastContext';
 import AuthShell from './AuthShell';
@@ -64,9 +63,7 @@ export default function ResetPassword() {
       subtitle="Enter your new password to complete the reset."
     >
       {message && (
-        <div className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {message}
-        </div>
+        <AlertBanner type="success" message={message} className="mb-4" />
       )}
       {error && (
         <div className="mb-4">
@@ -107,7 +104,7 @@ export default function ResetPassword() {
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-brand transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-brand transition-colors focus-ring rounded"
             >
               {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
               {showPassword ? 'Hide password' : 'Show password'}
@@ -128,18 +125,12 @@ export default function ResetPassword() {
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
-        <Button type="submit" className="w-full" disabled={submitting}>
-          {submitting ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner size="sm" /> Resetting...
-            </span>
-          ) : (
-            'Reset Password'
-          )}
+        <Button type="submit" className="w-full" loading={submitting}>
+          {submitting ? 'Resetting...' : 'Reset Password'}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 mt-6">
+      <p className="text-center text-sm text-ink-muted mt-6">
         <Link to="/login" className="text-brand hover:underline">
           Back to login
         </Link>

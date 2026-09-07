@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
+import ModuleStatusBadge from '../../components/shared/ModuleStatusBadge';
 
 const STATUSES = ['Not Started', 'In Progress', 'Completed'];
 
@@ -115,16 +121,11 @@ export default function ModuleProgress() {
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Module Progress</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Track each apprentice's status, assessment scores and completion dates.
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Module Progress" subtitle="Track each apprentice's status, assessment scores and completion dates." />
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <Card className="mb-6">
+        <label className="block text-sm font-medium text-ink mb-2">
           Apprentice
         </label>
         {loadingApps ? (
@@ -133,7 +134,7 @@ export default function ModuleProgress() {
           <select
             value={selectedId}
             onChange={handleSelect}
-            className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+            className="w-full md:w-96 border border-line rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">Select an apprentice...</option>
             {apprentices.map((a) => (
@@ -143,47 +144,48 @@ export default function ModuleProgress() {
             ))}
           </select>
         )}
-      </div>
+      </Card>
 
       {message && (
-        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-md mb-6">{message}</div>
+        <AlertBanner type="success" message={message} className="mb-6" />
       )}
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
       {selectedId && (
-        <div className="bg-white rounded-lg shadow">
+        <Card padding={false}>
           {loadingProgress ? (
             <SkeletonTable rows={4} cols={4} />
           ) : rows.length === 0 ? (
-            <div className="p-6 text-gray-500">No modules found.</div>
+            <EmptyState title="No modules found" description="Create active modules before tracking apprentice progress." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-surface-muted/60">
                   <tr>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Score (%)</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Date</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Module</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Category</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Status</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Score (%)</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Completion Date</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-line">
                   {rows.map((row) => (
                     <tr key={row.module_id} className={row.is_active ? '' : 'opacity-50'}>
                       <td className="p-4">
-                        <p className="font-medium text-gray-800">{row.module_name}</p>
-                        {!row.is_active && <p className="text-xs text-gray-500">Inactive</p>}
+                        <p className="font-medium text-ink">{row.module_name}</p>
+                        {!row.is_active && <p className="text-xs text-ink-muted">Inactive</p>}
                       </td>
-                      <td className="p-4 text-gray-600">{row.category || 'N/A'}</td>
+                      <td className="p-4 text-ink-muted">{row.category || 'N/A'}</td>
                       <td className="p-4">
+                        <div className="mb-2"><ModuleStatusBadge status={row.status} /></div>
                         <select
                           value={row.status}
                           onChange={(e) => updateRow(row.module_id, 'status', e.target.value)}
-                          className="border border-gray-300 rounded-md px-2 py-1"
+                          className="border border-line rounded-md px-2 py-1"
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>{s}</option>
@@ -197,7 +199,7 @@ export default function ModuleProgress() {
                           max="100"
                           value={row.assessment_score}
                           onChange={(e) => updateRow(row.module_id, 'assessment_score', e.target.value)}
-                          className="w-24 border border-gray-300 rounded-md px-2 py-1"
+                          className="w-24 border border-line rounded-md px-2 py-1"
                         />
                       </td>
                       <td className="p-4">
@@ -205,18 +207,18 @@ export default function ModuleProgress() {
                           type="date"
                           value={row.completion_date}
                           onChange={(e) => updateRow(row.module_id, 'completion_date', e.target.value)}
-                          className="border border-gray-300 rounded-md px-2 py-1"
+                          className="border border-line rounded-md px-2 py-1"
                         />
                       </td>
                       <td className="p-4">
-                        <button
+                        <Button
                           type="button"
-                          disabled={saving}
+                          loading={saving}
                           onClick={() => handleSave(row)}
-                          className="bg-brand text-white px-3 py-1 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                          size="sm"
                         >
                           Save
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -224,7 +226,7 @@ export default function ModuleProgress() {
               </table>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

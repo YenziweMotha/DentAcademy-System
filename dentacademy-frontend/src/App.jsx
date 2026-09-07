@@ -16,9 +16,11 @@ import Performance from './pages/dashboards/Performance';
 import Users from './pages/dashboards/Users';
 import Reports from './pages/dashboards/Reports';
 import SystemSettings from './pages/dashboards/SystemSettings';
+import AuditLogs from './pages/dashboards/AuditLogs';
 
 import ApprenticeList from './pages/apprentices/ApprenticeList';
-import ApprenticeCreate from './pages/apprentices/ApprenticeCreate';
+import ApprenticeAccountCreate from './pages/apprentices/ApprenticeAccountCreate';
+import ApprenticeRegister from './pages/apprentices/ApprenticeRegister';
 import ApprenticeDetail from './pages/apprentices/ApprenticeDetail';
 import ApprenticeEdit from './pages/apprentices/ApprenticeEdit';
 
@@ -32,6 +34,9 @@ import EvaluationApprove from './pages/evaluations/EvaluationApprove';
 import PredictionView from './pages/predictions/PredictionView';
 import Mentors from './pages/mentors/Mentors';
 import AttendancePage from './pages/attendance/AttendancePage';
+import ExperienceChat from './pages/chat/ExperienceChat';
+import EscalationReview from './pages/escalations/EscalationReview';
+import NotFound from './pages/NotFound';
 
 const staff = ['Administrator', 'Supervisor'];
 
@@ -72,6 +77,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['Administrator']}>
                 <SystemSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/admin/logs"
+            element={
+              <ProtectedRoute allowedRoles={['Administrator']}>
+                <AuditLogs />
               </ProtectedRoute>
             }
           />
@@ -120,6 +134,24 @@ function App() {
             }
           />
 
+          <Route
+            path="/experience-chat"
+            element={
+              <ProtectedRoute allowedRoles={['Apprentice']}>
+                <ExperienceChat />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/escalations"
+            element={
+              <ProtectedRoute allowedRoles={staff}>
+                <EscalationReview />
+              </ProtectedRoute>
+            }
+          />
+
           {/* ================= APPRENTICES ================= */}
 
           <Route
@@ -135,7 +167,7 @@ function App() {
             path="/apprentices/create"
             element={
               <ProtectedRoute allowedRoles={staff}>
-                <ApprenticeCreate />
+                <ApprenticeAccountCreate />
               </ProtectedRoute>
             }
           />
@@ -144,7 +176,7 @@ function App() {
             path="/apprentices/:apprenticeId/register"
             element={
               <ProtectedRoute allowedRoles={staff}>
-                <ApprenticeCreate />
+                <ApprenticeRegister />
               </ProtectedRoute>
             }
           />
@@ -264,7 +296,7 @@ function App() {
 
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<NotFound />} />
 
         </Routes>
       </BrowserRouter>

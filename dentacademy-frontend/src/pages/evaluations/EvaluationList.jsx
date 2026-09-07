@@ -1,6 +1,14 @@
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
+import { ClipboardCheck } from 'lucide-react';
 import api from '../../api/axios';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import EmptyState from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
+import { TableRow, Td } from '../../components/ui/Table';
 
 export default function EvaluationList() {
   const [evaluations, setEvaluations] = useState([]);
@@ -30,85 +38,108 @@ export default function EvaluationList() {
   }, [filter]);
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Evaluations</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Evaluation history for your apprentices.
-          </p>
-        </div>
-
-        <div className="flex gap-2 mt-4 md:mt-0">
-          {[
-            ['all', 'All'],
-            ['pending', 'Pending'],
-            ['approved', 'Approved'],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setFilter(value)}
-              className={`px-4 py-2 rounded-md text-sm ${
-                filter === value
-                  ? 'bg-brand text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
-      )}
-
-      <div className="bg-white rounded-lg shadow">
-        {loading ? (
-          <SkeletonTable rows={5} cols={6} />
-        ) : evaluations.length === 0 ? (
-          <div className="p-6 text-gray-500">No evaluations found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Apprentice ID</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {evaluations.map((ev) => (
-                  <tr key={ev.evaluation_id}>
-                    <td className="p-4 font-medium text-gray-800">#{ev.evaluation_id}</td>
-                    <td className="p-4 text-gray-600">{ev.apprentice_id}</td>
-                    <td className="p-4 font-semibold text-gray-800">{ev.overall_score}%</td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          ev.approved
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {ev.approved ? 'Approved' : 'Pending'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {new Date(ev.submitted_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="space-y-6">
+      <PageHeader
+        title="Evaluations"
+        subtitle="Evaluation history for your apprentices."
+        actions={
+          <div className="flex gap-2 flex-wrap">
+            {[
+              ['all', 'All'],
+              ['pending', 'Pending'],
+              ['approved', 'Approved'],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                variant={filter === value ? 'primary' : 'secondary'}
+                size="sm"
+              >
+                {label}
+              </Button>
+            ))}
           </div>
-        )}
-      </div>
+        }
+      />
+
+      {error && !loading ? (
+        <Card>
+          <ErrorState
+            title="Could not load evaluations"
+            description={error}
+            onRetry={loadEvaluations}
+          />
+        </Card>
+      ) : (
+        <Card padding={false} className="overflow-hidden">
+          {loading ? (
+            <SkeletonTable rows={5} cols={5} />
+          ) : evaluations.length === 0 ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title="No evaluations found"
+              description="Try another filter or submit the first evaluation."
+            />
+          ) : (
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-surface-muted/60">
+                    <tr>
+                      {['Evaluation', 'Apprentice ID', 'Score', 'Status', 'Submitted'].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            className="text-left px-5 py-3 text-[11px] font-semibold text-ink-subtle uppercase tracking-wider"
+                          >
+                            {h}
+                          </th>
+                        )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {evaluations.map((ev) => (
+                      <TableRow key={ev.evaluation_id}>
+                        <Td className="font-semibold">#{ev.evaluation_id}</Td>
+                        <Td className="text-ink-muted">{ev.apprentice_id}</Td>
+                        <Td className="font-bold tabular-nums">{ev.overall_score}</Td>
+                        <Td>
+                          <StatusBadge status={ev.approved ? 'APPROVED' : 'PENDING'} />
+                        </Td>
+                        <Td className="text-ink-muted">
+                          {new Date(ev.submitted_at).toLocaleDateString()}
+                        </Td>
+                      </TableRow>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="md:hidden divide-y divide-line">
+                {evaluations.map((ev) => (
+                  <div key={ev.evaluation_id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-ink">#{ev.evaluation_id}</p>
+                      <StatusBadge status={ev.approved ? 'APPROVED' : 'PENDING'} />
+                    </div>
+                    <p className="text-sm text-ink-muted">
+                      Apprentice #{ev.apprentice_id}
+                    </p>
+                    <p className="text-2xl font-bold tabular-nums text-ink">
+                      {ev.overall_score}
+                    </p>
+                    <p className="text-xs text-ink-subtle">
+                      {new Date(ev.submitted_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

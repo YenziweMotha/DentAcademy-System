@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card, { CardHeader } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function AttendancePage() {
   const [apprentices, setApprentices] = useState([]);
@@ -80,26 +86,21 @@ export default function AttendancePage() {
     }
   };
 
-  const input = 'w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
+  const input = 'w-full border border-line rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand';
+  const label = 'block text-sm font-medium text-ink mb-1';
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Attendance</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Record and review attendance for each apprentice.
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Attendance" subtitle="Record and review attendance for each apprentice." />
 
       {message && (
-        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-md mb-6">{message}</div>
+        <AlertBanner type="success" message={message} className="mb-6" />
       )}
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <Card className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="flex-1">
           <label className={label}>Apprentice</label>
           {loadingApps ? (
@@ -108,7 +109,7 @@ export default function AttendancePage() {
             <select
               value={selectedId}
               onChange={handleSelect}
-              className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full md:w-96 border border-line rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
             >
               <option value="">Select an apprentice...</option>
               {apprentices.map((a) => (
@@ -121,19 +122,19 @@ export default function AttendancePage() {
         </div>
 
         {selectedId && (
-          <button
+          <Button
             type="button"
             onClick={() => setShowForm((v) => !v)}
-            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
+            variant={showForm ? 'secondary' : 'primary'}
           >
             {showForm ? 'Cancel' : 'Record Attendance'}
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
 
       {showForm && selectedId && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Record Attendance</h2>
+        <Card as="form" onSubmit={handleSubmit} className="mb-6 animate-fade-up">
+          <CardHeader title="Record Attendance" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={label}>Period Start *</label>
@@ -153,54 +154,42 @@ export default function AttendancePage() {
             </div>
           </div>
           <div className="flex justify-end mt-6">
-            <button type="submit" disabled={saving} className="bg-brand text-white px-5 py-2 rounded-md hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button type="submit" loading={saving}>
               {saving ? 'Saving...' : 'Save Attendance'}
-            </button>
+            </Button>
           </div>
-        </form>
+        </Card>
       )}
 
       {selectedId && (
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-800">Attendance History</h2>
-          </div>
+        <Card padding={false}>
+          <CardHeader title="Attendance History" className="p-6 mb-0 border-b border-line" />
           {loadingRecords ? (
             <SkeletonTable rows={3} cols={4} />
           ) : records.length === 0 ? (
-            <div className="p-6 text-gray-500">No attendance records for this apprentice.</div>
+            <EmptyState title="No attendance records" description="Record the first attendance period for this apprentice." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-surface-muted/60">
                   <tr>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Rate</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Period</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Days</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Attendance Rate</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-line">
                   {records.map((record) => (
                     <tr key={record.attendance_id}>
-                      <td className="p-4 text-gray-600">
+                      <td className="p-4 text-ink-muted">
                         {new Date(record.period_start + 'T00:00:00').toLocaleDateString()} -{' '}
                         {new Date(record.period_end + 'T00:00:00').toLocaleDateString()}
                       </td>
-                      <td className="p-4 text-gray-600">
+                      <td className="p-4 text-ink-muted">
                         {record.days_present} / {record.days_expected}
                       </td>
                       <td className="p-4">
-                        <span
-                          className={`font-semibold ${
-                            record.attendance_rate >= 75
-                              ? 'text-green-600'
-                              : record.attendance_rate >= 50
-                              ? 'text-yellow-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {record.attendance_rate}%
-                        </span>
+                        <Badge text={`${record.attendance_rate}%`} color={record.attendance_rate >= 75 ? 'green' : record.attendance_rate >= 50 ? 'yellow' : 'red'} />
                       </td>
                     </tr>
                   ))}
@@ -208,7 +197,7 @@ export default function AttendancePage() {
               </table>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

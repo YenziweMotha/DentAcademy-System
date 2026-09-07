@@ -3,6 +3,10 @@ import api from '../../api/axios';
 import EvaluationForm from '../../components/shared/EvaluationForm';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import { useToast } from '../../context/ToastContext';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function EvaluationSubmit() {
   const [assigned, setAssigned] = useState([]);
@@ -48,34 +52,29 @@ export default function EvaluationSubmit() {
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Submit Evaluation</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Assess your assigned apprentice across the six performance dimensions.
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Submit Evaluation" subtitle="Assess your assigned apprentice across the six performance dimensions." />
 
       {message && (
-        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-md mb-6">{message}</div>
+        <AlertBanner type="success" message={message} className="mb-6" />
       )}
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <Card className="mb-6">
+        <label className="block text-sm font-medium text-ink mb-2">
           Apprentice
         </label>
         {loading ? (
           <SkeletonTable rows={3} cols={4} />
         ) : assigned.length === 0 ? (
-          <p className="text-gray-500">No apprentices are currently assigned to you.</p>
+          <EmptyState title="No assigned apprentices" description="An apprentice must be assigned before you can submit an evaluation." />
         ) : (
           <select
             value={apprenticeId}
             onChange={(e) => setApprenticeId(e.target.value)}
-            className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+            className="w-full md:w-96 border border-line rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">Select an apprentice...</option>
             {assigned.map((a) => (
@@ -85,12 +84,12 @@ export default function EvaluationSubmit() {
             ))}
           </select>
         )}
-      </div>
+      </Card>
 
       {apprenticeId && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <Card className="animate-fade-up">
           <EvaluationForm onSubmit={handleSubmit} loading={submitting} />
-        </div>
+        </Card>
       )}
     </div>
   );

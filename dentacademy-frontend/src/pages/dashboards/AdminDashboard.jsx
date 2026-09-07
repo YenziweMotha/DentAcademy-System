@@ -1,9 +1,29 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, AlertTriangle, ClipboardList } from 'lucide-react';
+import {
+  Users,
+  UserCheck,
+  AlertTriangle,
+  ClipboardList,
+  Settings,
+  FileText,
+  ScrollText,
+  ArrowRight,
+  Activity,
+} from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
-import { SkeletonTable } from '../../components/ui/Skeleton';
+import { SkeletonTable, SkeletonStatGrid } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card, { CardHeader } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import EmptyState from '../../components/ui/EmptyState';
+import Avatar from '../../components/ui/Avatar';
+import ProgressBar from '../../components/ui/ProgressBar';
+import Pagination from '../../components/ui/Pagination';
+import SearchBar from '../../components/ui/SearchBar';
+import ErrorState from '../../components/ui/ErrorState';
+import { useToast } from '../../context/ToastContext';
 
 export default function AdminDashboard() {
   const [data, setData] = useState({
@@ -14,17 +34,50 @@ export default function AdminDashboard() {
     pending_evaluations: 0,
     recent_audit: [],
   });
-
   const [apprentices, setApprentices] = useState([]);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
-
+  const toast = useToast();
   const limit = 10;
+
+  const loadDashboard = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await api.get('/api/dashboard/admin');
+      setData(response.data);
+    } catch (err) {
+      console.error('Failed to load admin dashboard:', err);
+      toast.error('Failed to load dashboard statistics.');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const loadApprentices = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const skip = (page - 1) * limit;
+      const response = await api.get('/api/apprentices', {
+        params: { skip, limit, search: search || undefined },
+      });
+      setApprentices(response.data.items || []);
+      setTotal(response.data.total || 0);
+    } catch (err) {
+      console.error('Failed to load apprentices:', err);
+      setApprentices([]);
+      setError(err.response?.data?.detail || 'Failed to load apprentices.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadDashboard();
@@ -34,295 +87,220 @@ export default function AdminDashboard() {
     loadApprentices();
   }, [page, search]);
 
-  const loadDashboard = async () => {
-    try {
-      const response = await api.get('/api/dashboard/admin');
-      setData(response.data);
-    } catch (error) {
-      console.error('Failed to load admin dashboard:', error);
-    }
-  };
-
-  const loadApprentices = async () => {
-    setLoading(true);
-
-    try {
-      const skip = (page - 1) * limit;
-
-      const response = await api.get('/api/apprentices', {
-        params: {
-          skip,
-          limit,
-          search: search || undefined,
-        },
-      });
-
-      /*
-       * Backend pagination response:
-       *
-       * {
-       *   items: [...],
-       *   total: 5000,
-       *   skip: 0,
-       *   limit: 10
-       * }
-       */
-
-      setApprentices(response.data.items || []);
-      setTotal(response.data.total || 0);
-
-    } catch (error) {
-      console.error('Failed to load apprentices:', error);
-      setApprentices([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const totalPages = Math.ceil(total / limit);
-
-  const handleSearch = (event) => {
-    setSearch(event.target.value);
-    setPage(1);
-  };
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Admin Dashboard"
+        subtitle="Overview of apprentices, evaluations, and recent activity."
+        actions={
+          <>
+            <Button variant="secondary" icon={Users} onClick={() => navigate('/dashboard/admin/users')}>
+              Users
+            </Button>
+            <Button variant="secondary" icon={Settings} onClick={() => navigate('/dashboard/admin/settings')}>
+              Settings
+            </Button>
+            <Button variant="outline" icon={FileText} onClick={() => navigate('/dashboard/admin/reports')}>
+              Reports
+            </Button>
+            <Button variant="outline" icon={ScrollText} onClick={() => navigate('/dashboard/admin/logs')}>
+              Logs
+            </Button>
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Admin Dashboard
-          </h1>
-
-          <p className="text-gray-500 mt-1">
-            Manage apprentices, users and performance records.
-          </p>
+      {statsLoading ? (
+        <SkeletonStatGrid count={4} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
+          <StatCard
+            icon={Users}
+            label="Total Apprentices"
+            value={data.total_apprentices}
+            tone="brand"
+            onClick={() => navigate('/apprentices')}
+          />
+          <StatCard
+            icon={UserCheck}
+            label="Active Apprentices"
+            value={data.active_apprentices}
+            tone="gray"
+          />
+          <StatCard
+            icon={AlertTriangle}
+            label="At Risk"
+            value={data.at_risk_count}
+            tone="red"
+            onClick={() => navigate('/predictions')}
+          />
+          <StatCard
+            icon={ClipboardList}
+            label="Pending Evaluations"
+            value={data.pending_evaluations}
+            tone="yellow"
+            onClick={() => navigate('/evaluations/approve')}
+          />
         </div>
+      )}
 
-        {/* Admin navigation */}
-        <div className="flex gap-3">
-
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard/admin/users')}
-            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
-          >
-            Users
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard/admin/settings')}
-            className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
-          >
-            Settings
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard/admin/reports')}
-            className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800"
-          >
-            Reports
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* Dashboard statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-        <StatCard
-          icon={Users}
-          label="Total Apprentices"
-          value={data.total_apprentices}
-          tone="brand"
-        />
-
-        <StatCard
-          icon={UserCheck}
-          label="Active Apprentices"
-          value={data.active_apprentices}
-          tone="gray"
-        />
-
-        <StatCard
-          icon={AlertTriangle}
-          label="At Risk"
-          value={data.at_risk_count}
-          tone="red"
-        />
-
-        <StatCard
-          icon={ClipboardList}
-          label="Pending Evaluations"
-          value={data.pending_evaluations}
-          tone="yellow"
-        />
-
-      </div>
-
-      {/* Apprentice performance */}
-      <div className="bg-white rounded-lg shadow">
-
-        <div className="p-6 border-b">
-
-          <h2 className="text-xl font-semibold text-gray-800">
-            Apprentice Performance
-          </h2>
-
-          <p className="text-sm text-gray-500 mt-1">
-            Search for an apprentice and generate their performance record.
-          </p>
-
-          {/* Search */}
-          <div className="mt-4">
-
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search by name or ID number..."
-              className="w-full md:w-96 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Card padding={false} className="xl:col-span-2 overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-line">
+            <CardHeader
+              title="Apprentice Performance"
+              subtitle="Search and open a performance record."
+              className="mb-4"
             />
-
+            <SearchBar
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onSubmit={(e) => {
+                e.preventDefault();
+                setPage(1);
+                setSearch(searchInput.trim());
+              }}
+              onClear={() => {
+                setSearchInput('');
+                setSearch('');
+                setPage(1);
+              }}
+              placeholder="Search by name or ID number..."
+              bare
+            />
           </div>
 
-        </div>
-
-        {/* Apprentice list */}
-        {loading ? (
-
-          <SkeletonTable rows={4} cols={3} />
-
-        ) : apprentices.length === 0 ? (
-
-          <div className="p-6 text-gray-500">
-            No apprentices found.
-          </div>
-
-        ) : (
-
-          <div className="divide-y">
-
-            {apprentices.map((apprentice) => (
-
-              <div
-                key={apprentice.apprentice_id}
-                className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-              >
-
-                <div>
-
-                  <h3 className="font-semibold text-gray-800">
-                    {apprentice.first_name} {apprentice.surname}
-                  </h3>
-
-                  <p className="text-sm text-gray-500">
-                    ID: {apprentice.id_number}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    Province: {apprentice.province}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    Completion: {apprentice.completion_pct ?? 0}%
-                  </p>
-
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      `/dashboard/performance/${apprentice.apprentice_id}`
-                    )
-                  }
-                  className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark"
+          {loading ? (
+            <SkeletonTable rows={4} cols={3} />
+          ) : error ? (
+            <ErrorState description={error} onRetry={loadApprentices} />
+          ) : apprentices.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title={search ? 'No apprentices found' : 'No apprentices yet'}
+              description={
+                search
+                  ? `No results matching “${search}”.`
+                  : 'Register an apprentice to see them here.'
+              }
+              action={
+                !search && (
+                  <Button onClick={() => navigate('/apprentices/create')}>
+                    Register Apprentice
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <div className="divide-y divide-line">
+              {apprentices.map((apprentice, i) => (
+                <div
+                  key={apprentice.apprentice_id}
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-surface-muted/40 transition-colors"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 >
-                  View Performance
-                </button>
+                  <Avatar
+                    name={`${apprentice.first_name} ${apprentice.surname}`}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-ink truncate">
+                      {apprentice.first_name} {apprentice.surname}
+                    </h3>
+                    <p className="text-sm text-ink-muted mt-0.5">
+                      ID {apprentice.id_number}
+                      {apprentice.province ? ` · ${apprentice.province}` : ''}
+                    </p>
+                    <div className="mt-2 max-w-xs">
+                      <ProgressBar
+                        progress={apprentice.completion_pct ?? 0}
+                        color={
+                          (apprentice.completion_pct ?? 0) >= 75
+                            ? 'green'
+                            : (apprentice.completion_pct ?? 0) >= 50
+                              ? 'blue'
+                              : 'yellow'
+                        }
+                        showLabel
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    variant="soft"
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/dashboard/performance/${apprentice.apprentice_id}`)
+                    }
+                  >
+                    View Performance
+                    <ArrowRight size={14} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
 
-              </div>
+          {!loading && !error && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={limit}
+              onPrev={() => setPage((p) => p - 1)}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          )}
+        </Card>
 
-            ))}
-
+        <Card padding={false} className="overflow-hidden h-fit">
+          <div className="p-5 sm:p-6 border-b border-line">
+            <CardHeader
+              title="Recent Activity"
+              subtitle="Latest system audit events."
+              className="mb-0"
+              actions={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/admin/logs')}
+                >
+                  View all
+                </Button>
+              }
+            />
           </div>
-
-        )}
-
-        {/* Pagination */}
-        {!loading && totalPages > 1 && (
-
-          <div className="flex items-center justify-between p-6 border-t">
-
-            <button
-              type="button"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Previous
-            </button>
-
-            <span className="text-sm text-gray-600">
-              Page {page} of {totalPages}
-            </span>
-
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-              className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Next
-            </button>
-
-          </div>
-
-        )}
-
+          {data.recent_audit.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="No recent activity"
+              description="Audit events will appear here as actions are taken."
+            />
+          ) : (
+            <div className="divide-y divide-line max-h-[28rem] overflow-y-auto">
+              {data.recent_audit.map((entry) => (
+                <div key={entry.log_id} className="p-4 flex gap-3">
+                  <div className="mt-1 h-2 w-2 rounded-full bg-brand shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink">
+                      <span className="font-semibold">{entry.action_type}</span>
+                      <span className="text-ink-muted">
+                        {' '}
+                        on {entry.entity_type}
+                        {entry.record_id ? ` #${entry.record_id}` : ''}
+                      </span>
+                    </p>
+                    <p className="text-xs text-ink-subtle mt-1">
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
-
-      {/* Recent activity */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Recent Activity
-          </h2>
-        </div>
-
-        {data.recent_audit.length === 0 ? (
-          <div className="p-6 text-gray-500">No recent activity recorded.</div>
-        ) : (
-          <div className="divide-y">
-            {data.recent_audit.map((entry) => (
-              <div
-                key={entry.log_id}
-                className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-              >
-                <p className="text-sm text-gray-800">
-                  <span className="font-medium">{entry.action_type}</span>
-                  <span className="text-gray-500">
-                    {' '}
-                    on {entry.entity_type}
-                    {entry.record_id ? ` #${entry.record_id}` : ''}
-                  </span>
-                </p>
-                <p className="text-sm text-gray-500">
-                  {new Date(entry.timestamp).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
     </div>
   );
 }

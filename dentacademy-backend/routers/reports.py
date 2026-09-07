@@ -24,7 +24,12 @@ def get_apprentice_report(
     from services.report_service import generate_apprentice_pdf
 
     try:
-        pdf_path = generate_apprentice_pdf(id, db)
+        pdf_path = generate_apprentice_pdf(
+            id,
+            db,
+            prepared_by=current_user.full_name,
+            prepared_role=current_user.role,
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -45,7 +50,11 @@ def get_programme_summary(
 ):
     from services.report_service import generate_summary_pdf
 
-    pdf_path = generate_summary_pdf(db)
+    pdf_path = generate_summary_pdf(
+        db,
+        prepared_by=current_user.full_name,
+        prepared_role=current_user.role,
+    )
     log_audit_action(db, "REPORT_GENERATED", current_user.user_id, "System", None)
     return FileResponse(
         pdf_path,

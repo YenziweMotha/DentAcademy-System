@@ -1,5 +1,7 @@
 import os
-from sqlalchemy import create_engine
+import logging
+from urllib.parse import urlsplit, quote_plus
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
@@ -32,6 +34,48 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+
+def ensure_database():
+    """Create the target database if it does not yet exist.
+
+    Used for "online" deployments (e.g. TiDB Cloud) where the schema is
+    provisioned by the app itself (AUTO_CREATE_TABLES) and the database
+    must be present before the first connection. No-op for SQLite or when
+    DB_AUTO_CREATE is disabled.
+    """
+    if os.getenv("DB_AUTO_CREATE", "1") != "1":
+        return
+    if not DATABASE_URL.startswith(("mysql+pymysql", "mysql://")):
+        return
+
+    parts = urlsplit(DATABASE_URL)
+    db_name = parts.path.lstrip("/") or "dentacademy_db"
+    user = quote_plus(parts.username or "")
+    password = quote_plus(parts.password or "")
+    netloc = parts.hostname or "localhost"
+    if parts.port:
+        netloc = f"{netloc}:{parts.port}"
+    # Connect to the built-in `sys` database to issue CREATE DATABASE.
+    admin_url = f"{parts.scheme}://{user}:{password}@{netloc}/sys"
+
+    admin_engine = create_engine(
+        admin_url,
+        connect_args=_tls_connect_args(),
+        pool_pre_ping=True,
+    )
+    try:
+        with admin_engine.connect() as conn:
+            conn.execute(
+                text(
+                    f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
+                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                )
+            )
+            conn.execute(text(f"USE `{db_name}`"))
+        logging.getLogger("dentacademy").info("Ensured database '%s' exists.", db_name)
+    finally:
+        admin_engine.dispose()
 
 def get_db():
     db = SessionLocal()

@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable, SkeletonCard } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import AlertBanner from '../../components/ui/AlertBanner';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function EvaluationApprove() {
   const [pending, setPending] = useState([]);
@@ -56,72 +62,66 @@ export default function EvaluationApprove() {
   ];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Approve Evaluations</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Review and approve evaluations submitted by mentors.
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader title="Approve Evaluations" subtitle="Review and approve evaluations submitted by mentors." />
 
       {message && (
-        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-md mb-6">{message}</div>
+        <AlertBanner type="success" message={message} className="mb-6" />
       )}
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
+        <AlertBanner type="error" message={error} className="mb-6" />
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <Card padding={false}>
         {loading ? (
           <SkeletonTable rows={4} cols={6} />
         ) : pending.length === 0 ? (
-          <div className="p-6 text-gray-500">No evaluations awaiting approval.</div>
+          <EmptyState title="All caught up" description="There are no evaluations awaiting approval." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-surface-muted/60">
                 <tr>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Mentor</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions (1-5)</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                  <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Evaluation</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Mentor</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Dimensions (1-5)</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Score</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Submitted</th>
+                  <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-line">
                 {pending.map((ev) => (
                   <tr key={ev.evaluation_id}>
                     <td className="p-4">
-                      <p className="font-medium text-gray-800">#{ev.evaluation_id}</p>
-                      <p className="text-sm text-gray-500">Apprentice {ev.apprentice_id}</p>
+                      <p className="font-medium text-ink">#{ev.evaluation_id}</p>
+                      <p className="text-sm text-ink-muted">Apprentice {ev.apprentice_id}</p>
                     </td>
-                    <td className="p-4 text-gray-600">Mentor {ev.mentor_id}</td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-ink-muted">Mentor {ev.mentor_id}</td>
+                    <td className="p-4 text-ink-muted">
                       <div className="flex gap-2 flex-wrap">
                         {dimensions.map(([key, label]) => (
-                          <span key={key} className="text-xs bg-gray-100 rounded px-2 py-1" title={label}>
-                            {label}: {ev[key]}
-                          </span>
+                          <Badge key={key} text={`${label}: ${ev[key]}`} color="gray" />
                         ))}
                       </div>
                       {ev.comments && (
-                        <p className="text-sm text-gray-500 mt-1 italic">"{ev.comments}"</p>
+                        <p className="text-sm text-ink-muted mt-1 italic">"{ev.comments}"</p>
                       )}
                     </td>
-                    <td className="p-4 font-semibold text-gray-800">{ev.overall_score}%</td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 font-semibold text-ink">{ev.overall_score}</td>
+                    <td className="p-4 text-ink-muted">
                       {new Date(ev.submitted_at).toLocaleDateString()}
                     </td>
                     <td className="p-4">
-                      <button
+                      <Button
                         type="button"
-                        disabled={approvingId === ev.evaluation_id}
+                        loading={approvingId === ev.evaluation_id}
                         onClick={() => approve(ev.evaluation_id)}
-                        className="bg-green-600 text-white px-4 py-1 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        variant="soft"
+                        size="sm"
                       >
-                        {approvingId === ev.evaluation_id ? 'Approving...' : 'Approve'}
-                      </button>
+                        Approve
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -129,7 +129,7 @@ export default function EvaluationApprove() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ document_title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @top-left {
+        content: "DentAcademy Apprenticeship Programme";
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @top-right {
+        content: "CONFIDENTIAL";
+        font-size: 8pt;
+        font-weight: bold;
+        letter-spacing: 0.12em;
+        color: #8a1c1c;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @bottom-left {
+        content: "{{ report_ref }}";
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #5c6570;
+        font-family: "Times New Roman", Times, serif;
+      }
+    }
+    @page :first {
+      margin-top: 14mm;
+      @top-left { content: none; }
+      @top-right { content: none; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Times New Roman", Times, Georgia, serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1f24;
+      margin: 0;
+    }
+    .letterhead {
+      border-bottom: 2.5pt solid #0f2744;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .letterhead-gold { height: 3.5pt; background: #c5a572; margin-bottom: 12px; }
+    .org-name {
+      font-size: 16pt;
+      font-weight: bold;
+      letter-spacing: 0.04em;
+      color: #0f2744;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .org-sub { font-size: 9.5pt; color: #3d4a57; margin: 2px 0 0 0; }
+    .classification {
+      float: right;
+      text-align: right;
+      font-size: 8.5pt;
+      color: #8a1c1c;
+      font-weight: bold;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border: 1pt solid #8a1c1c;
+      padding: 4px 8px;
+      margin-top: 2px;
+    }
+    h1 {
+      font-size: 15pt;
+      color: #0f2744;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 18px 0 6px 0;
+    }
+    .issued { text-align: center; font-size: 9.5pt; color: #3d4a57; margin: 0 0 16px 0; }
+    h2 {
+      font-size: 11.5pt;
+      color: #0f2744;
+      border-bottom: 0.75pt solid #0f2744;
+      padding-bottom: 3px;
+      margin: 18px 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      page-break-after: avoid;
+    }
+    h3 { font-size: 10.5pt; color: #0f2744; margin: 12px 0 6px 0; page-break-after: avoid; }
+    p { margin: 0 0 8px 0; text-align: justify; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6px 0 12px 0;
+      font-size: 9.5pt;
+    }
+    th, td {
+      border: 0.6pt solid #8a939c;
+      padding: 5px 7px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #0f2744;
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr { page-break-inside: avoid; }
+    .kv th {
+      width: 40%;
+      background: #e8eef4;
+      color: #0f2744;
+      font-weight: bold;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 9.5pt;
+    }
+    .muted { color: #5c6570; font-style: italic; }
+    .narrative {
+      background: #f6f3ed;
+      border-left: 3.5pt solid #c5a572;
+      padding: 8px 12px;
+      margin: 8px 0 12px 0;
+    }
+    .ai-badge {
+      display: inline-block;
+      font-size: 8pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0f2744;
+      border: 0.6pt solid #0f2744;
+      padding: 1px 6px;
+      margin-left: 6px;
+      font-weight: bold;
+    }
+    ul { margin: 4px 0 10px 18px; padding: 0; }
+    li { margin-bottom: 3px; }
+    .risk-high { color: #8a1c1c; font-weight: bold; }
+    .sign-grid { width: 100%; margin-top: 18px; border-collapse: collapse; }
+    .sign-grid td { border: none; width: 50%; padding: 12px 18px 0 0; vertical-align: top; }
+    .sign-line {
+      border-top: 0.7pt solid #1a1f24;
+      margin-top: 36px;
+      padding-top: 4px;
+      font-size: 9pt;
+    }
+    .disclaimer {
+      margin-top: 16px;
+      padding: 8px 10px;
+      border: 0.7pt solid #8a5a12;
+      background: #fbf6ea;
+      font-size: 8.5pt;
+    }
+    .footer-note { font-size: 8.5pt; color: #5c6570; margin-top: 10px; }
+    .clear { clear: both; }
+    .stat {
+      width: 33.33%;
+      text-align: center;
+      background: #e8eef4;
+      font-size: 16pt;
+      font-weight: bold;
+      color: #0f2744;
+    }
+    .stat span { display: block; font-size: 8pt; font-weight: normal; color: #3d4a57; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="letterhead-gold"></div>
+  <div class="letterhead">
+    <div class="classification">Confidential</div>
+    <p class="org-name">DentAcademy</p>
+    <p class="org-sub">Automotive Workshop · Apprenticeship Programme · Lebowakgomo, Limpopo, South Africa</p>
+    <p class="org-sub">Issued via the DentAcademy Management Portal</p>
+    <div class="clear"></div>
+  </div>
+
+  <h1>Programme Summary Report</h1>
+  <p class="issued">Official overview of the DentAcademy apprenticeship intake</p>
+
+  <table class="kv">
+    <tr><th>Report title</th><td>{{ document_title }}</td></tr>
+    <tr><th>Report reference</th><td>{{ report_ref }}</td></tr>
+    <tr><th>Classification</th><td>CONFIDENTIAL — authorised staff only</td></tr>
+    <tr><th>Host organisation</th><td>DentAcademy</td></tr>
+    <tr><th>Date of issue</th><td>{{ issued_at }}</td></tr>
+    <tr><th>Prepared by</th><td>{{ prepared_by }}{% if prepared_role %} ({{ prepared_role }}){% endif %}</td></tr>
+    <tr><th>Dropout-risk threshold</th><td>{{ risk_threshold }}%</td></tr>
+  </table>
+
+  <h2>1. Purpose</h2>
+  <p>
+    This document summarises the apprenticeship programme as recorded on the DentAcademy
+    register. It is issued for management monitoring of intake size, training progress,
+    attendance, workplace evaluation throughput, staffing, and AI risk flags.
+    Individual confidential experience-chat content is excluded.
+  </p>
+
+  <h2>2. Programme at a glance</h2>
+  <table>
+    <tr>
+      <td class="stat">{{ stats.total_apprentices }}<span>Apprentices</span></td>
+      <td class="stat">{{ stats.active_apprentices }}<span>Active</span></td>
+      <td class="stat">{{ stats.at_risk_count }}<span>Above risk threshold</span></td>
+    </tr>
+    <tr>
+      <td class="stat">{{ stats.avg_completion }}<span>Avg. module completion</span></td>
+      <td class="stat">{{ stats.avg_attendance }}<span>Avg. attendance</span></td>
+      <td class="stat">{{ stats.pending_evaluations }}<span>Pending evaluations</span></td>
+    </tr>
+  </table>
+
+  <h2>3. AI executive commentary <span class="ai-badge">{{ commentary.source_label }}</span></h2>
+  <p class="muted">
+    Advisory narrative based on programme aggregates. Not a disciplinary finding.
+  </p>
+  <div class="narrative">
+    <p>{{ commentary.executive_summary }}</p>
+  </div>
+
+  <h3>Observations</h3>
+  <ul>
+    {% for item in commentary.observations %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+  <h3>Strengths</h3>
+  <ul>
+    {% for item in commentary.strengths %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+  <h3>Areas of concern</h3>
+  <ul>
+    {% for item in commentary.areas_of_concern %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+  <h3>Recommendations</h3>
+  <ul>
+    {% for item in commentary.recommendations %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+  <div class="narrative">
+    <p>{{ commentary.overall_comment }}</p>
+  </div>
+
+  <h2>4. Register and staffing</h2>
+  <table class="kv">
+    <tr><th>Total apprentices</th><td>{{ stats.total_apprentices }}</td></tr>
+    <tr><th>Active</th><td>{{ stats.active_apprentices }}</td></tr>
+    <tr><th>Inactive</th><td>{{ stats.inactive_apprentices }}</td></tr>
+    <tr><th>Supervisors</th><td>{{ stats.supervisors }}</td></tr>
+    <tr><th>Mentors</th><td>{{ stats.mentors }}</td></tr>
+    <tr><th>Training modules (active)</th><td>{{ stats.total_modules }}</td></tr>
+  </table>
+
+  <h2>5. Evaluations and attendance</h2>
+  <table class="kv">
+    <tr><th>Evaluations submitted</th><td>{{ stats.total_evaluations }}</td></tr>
+    <tr><th>Evaluations approved</th><td>{{ stats.approved_evaluations }}</td></tr>
+    <tr><th>Evaluations pending</th><td>{{ stats.pending_evaluations }}</td></tr>
+    <tr><th>Attendance periods recorded</th><td>{{ stats.attendance_periods }}</td></tr>
+    <tr><th>Programme average attendance</th><td>{{ stats.avg_attendance }}</td></tr>
+  </table>
+
+  <h2>6. Apprentices above the AI risk threshold</h2>
+  {% if at_risk_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Apprentice</th>
+        <th>Status</th>
+        <th>Completion</th>
+        <th>Dropout risk</th>
+        <th>Completion likelihood</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in at_risk_rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.completion }}</td>
+        <td class="risk-high">{{ r.dropout_risk }}</td>
+        <td>{{ r.completion_likelihood }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No apprentices currently exceed the configured dropout-risk threshold.</p>
+  {% endif %}
+
+  <h2>7. Apprentice register</h2>
+  {% if apprentice_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>ID number</th>
+        <th>Status</th>
+        <th>Completion</th>
+        <th>Attendance</th>
+        <th>Eval. avg</th>
+        <th>Dropout risk</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in apprentice_rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.id_number }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.completion }}</td>
+        <td>{{ r.attendance }}</td>
+        <td>{{ r.eval_avg }}</td>
+        <td>{{ r.dropout_risk }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No apprentices are recorded on the register.</p>
+  {% endif %}
+
+  <h2>8. Declaration</h2>
+  <p>
+    This summary was generated from DentAcademy records as at the date of issue.
+    Identity numbers are partially masked. AI commentary is advisory.
+  </p>
+  <table class="sign-grid">
+    <tr>
+      <td>
+        <div class="sign-line">
+          Prepared by<br>
+          {{ prepared_by }}{% if prepared_role %}, {{ prepared_role }}{% endif %}<br>
+          Date: {{ issued_date }}
+        </div>
+      </td>
+      <td>
+        <div class="sign-line">
+          Authorised by (Administrator / Supervisor)<br>
+          Name: ________________________________<br>
+          Signature: ___________________________<br>
+          Date: ________________________________
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="disclaimer">
+    <strong>Disclaimer.</strong>
+    This report contains aggregate operational data and AI-generated estimates.
+    Dropout-risk and related scores are statistical indications only.
+    DentAcademy accepts no liability for decisions made
+    solely on the basis of this document.
+  </div>
+  <p class="footer-note">
+    End of report — {{ report_ref }} — DentAcademy.
+  </p>
+</body>
+</html>

@@ -79,6 +79,7 @@ class UserCreatedOut(UserOut):
     credentials_sent: bool = False
     dev_password: Optional[str] = None
     apprentice_id: Optional[int] = None
+    apprentice_registered: Optional[bool] = None
     mentor_id: Optional[int] = None
 
 

@@ -3,6 +3,16 @@ import api from '../../api/axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { SkeletonCard } from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import Card, { CardHeader } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
+import Avatar from '../../components/ui/Avatar';
+import AlertBanner from '../../components/ui/AlertBanner';
+import ErrorState from '../../components/ui/ErrorState';
+import EmptyState from '../../components/ui/EmptyState';
+import StatCard from '../../components/ui/StatCard';
+import { BookOpen, ClipboardCheck, CalendarDays } from 'lucide-react';
 
 export default function ApprenticeDetail() {
   const { apprenticeId } = useParams();
@@ -94,197 +104,152 @@ export default function ApprenticeDetail() {
 
   if (!apprentice) {
     return (
-      <div>
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
-        <button onClick={() => navigate('/apprentices')} className="text-brand hover:underline">Back to apprentices</button>
-      </div>
+      <ErrorState title="Apprentice unavailable" description={error || 'The apprentice could not be found.'} onRetry={loadAll} />
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell space-y-6">
       {apprentice.is_registered === false && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-md flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <p className="text-sm">
+        <AlertBanner type="warning" message={<span>
             This apprentice has a login account but their registration is not
             complete. Personal and academic details are still missing.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate(`/apprentices/${apprenticeId}/register`)}
-            className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 whitespace-nowrap"
-          >
-            Complete registration
-          </button>
-        </div>
+          </span>} />
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
-            {apprentice.first_name} {apprentice.surname}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {apprentice.qualification_type || 'No qualification recorded'}
-            {apprentice.institution ? ` - ${apprentice.institution}` : ''}
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <button type="button" onClick={() => navigate(`/apprentices/${apprenticeId}/edit`)} className="bg-brand text-white px-4 py-2 rounded-md hover:bg-brand-dark">
+      <PageHeader
+        title={`${apprentice.first_name} ${apprentice.surname}`}
+        subtitle={`${apprentice.qualification_type || 'No qualification recorded'}${apprentice.institution ? ` — ${apprentice.institution}` : ''}`}
+        breadcrumbs={[{ label: 'Apprentices', to: '/apprentices' }, { label: 'Profile' }]}
+        actions={<>
+          {apprentice.is_registered === false && <Button
+            type="button"
+            onClick={() => navigate(`/apprentices/${apprenticeId}/register`)}
+            variant="accent"
+          >
+            Complete registration
+          </Button>}
+          <Button type="button" onClick={() => navigate(`/apprentices/${apprenticeId}/edit`)}>
             Edit
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={toggleStatus}
-            className={`px-4 py-2 rounded-md ${
-              apprentice.status === 'ACTIVE'
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
+            variant={apprentice.status === 'ACTIVE' ? 'danger' : 'soft'}
           >
             {apprentice.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </>}
+      />
 
-      {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md">{error}</div>}
+      {error && <AlertBanner type="error" message={error} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Profile</h2>
-
-          {apprentice.photo_url ? (
-            <img src={apprentice.photo_url} alt="Apprentice" className="w-32 h-32 rounded-full object-cover mx-auto mb-4" />
-          ) : (
-            <div className="w-32 h-32 rounded-full bg-gray-200 mx-auto mb-4 flex items-center justify-center text-gray-500">
-              No photo
-            </div>
-          )}
+        <Card>
+          <CardHeader title="Profile" />
+          <Avatar name={`${apprentice.first_name} ${apprentice.surname}`} src={apprentice.photo_url} size="xl" className="mx-auto mb-4 !h-32 !w-32" />
 
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-500">ID Number</dt>
+              <dt className="text-ink-muted">ID Number</dt>
               <dd className="font-medium">{apprentice.id_number}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Gender</dt>
+              <dt className="text-ink-muted">Gender</dt>
               <dd className="font-medium">{apprentice.gender || 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Contact</dt>
+              <dt className="text-ink-muted">Contact</dt>
               <dd className="font-medium">{apprentice.contact_number || 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">City</dt>
+              <dt className="text-ink-muted">City</dt>
               <dd className="font-medium">{apprentice.city || 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Province</dt>
+              <dt className="text-ink-muted">Province</dt>
               <dd className="font-medium">{apprentice.province || 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Status</dt>
-              <dd className="font-medium">{apprentice.status}</dd>
+              <dt className="text-ink-muted">Status</dt>
+              <dd><StatusBadge status={apprentice.status} /></dd>
             </div>
           </dl>
 
           <form onSubmit={handlePhotoUpload} className="mt-6 pt-6 border-t">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Photo</label>
+            <label className="block text-sm font-medium text-ink mb-1">Upload Photo</label>
             <input
               type="file"
               accept="image/jpeg,image/png"
               onChange={(e) => setPhotoFile(e.target.files[0])}
-              className="block w-full text-sm text-gray-600 mb-2"
+              className="block w-full text-sm text-ink-muted mb-2"
             />
-            <button type="submit" disabled={!photoFile || uploading} className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button type="submit" disabled={!photoFile} loading={uploading} variant="secondary">
               {uploading ? 'Uploading...' : 'Upload Photo'}
-            </button>
-            {uploadMsg && <p className="text-sm text-gray-600 mt-2">{uploadMsg}</p>}
+            </Button>
+            {uploadMsg && <p className="text-sm text-ink-muted mt-2">{uploadMsg}</p>}
           </form>
-        </div>
+        </Card>
 
         {/* Summary + modules */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-gray-500 text-sm font-medium uppercase">Module Completion</h2>
-              <p className="text-3xl font-bold text-gray-800 mt-2">
-                {progress.length ? Math.round((completed / progress.length) * 100) : 0}%
-              </p>
-              <p className="text-sm text-gray-500 mt-1">{completed} of {progress.length} completed</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-gray-500 text-sm font-medium uppercase">Evaluations</h2>
-              <p className="text-3xl font-bold text-gray-800 mt-2">{evaluations.length}</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-gray-500 text-sm font-medium uppercase">Attendance</h2>
-              <p className="text-3xl font-bold text-gray-800 mt-2">{attendance.length} records</p>
-            </div>
+            <StatCard icon={BookOpen} label="Module Completion" value={`${progress.length ? Math.round((completed / progress.length) * 100) : 0}%`} hint={`${completed} of ${progress.length} completed`} />
+            <StatCard icon={ClipboardCheck} label="Evaluations" value={evaluations.length} tone="blue" />
+            <StatCard icon={CalendarDays} label="Attendance" value={attendance.length} hint="records" />
           </div>
 
-          <div className="bg-white rounded-lg shadow">
+          <Card padding={false}>
             <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">Module Progress</h2>
+              <h2 className="text-lg font-semibold text-ink">Module Progress</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-surface-muted/60">
                   <tr>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Module</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Category</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Status</th>
+                    <th className="text-left p-4 text-xs font-medium text-ink-muted uppercase tracking-wider">Score</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-line">
                   {progress.map((p) => (
                     <tr key={p.progress_id}>
-                      <td className="p-4 text-gray-800">{p.module?.module_name || `Module #${p.module_id}`}</td>
-                      <td className="p-4 text-gray-600">{p.module?.category || 'N/A'}</td>
+                      <td className="p-4 text-ink">{p.module?.module_name || `Module #${p.module_id}`}</td>
+                      <td className="p-4 text-ink-muted">{p.module?.category || 'N/A'}</td>
                       <td className="p-4">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            p.status === 'Completed'
-                              ? 'bg-green-100 text-green-800'
-                              : p.status === 'In Progress'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {p.status}
-                        </span>
+                        <StatusBadge status={p.status} />
                       </td>
-                      <td className="p-4 text-gray-600">{p.assessment_score ?? 'N/A'}</td>
+                      <td className="p-4 text-ink-muted">{p.assessment_score ?? 'N/A'}</td>
                     </tr>
                   ))}
                   {progress.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="p-4 text-gray-500">No module progress recorded.</td>
+                      <td colSpan="4" className="p-4 text-ink-muted">No module progress recorded.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow">
+          <Card padding={false}>
             <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">Recent Evaluations</h2>
+              <h2 className="text-lg font-semibold text-ink">Recent Evaluations</h2>
             </div>
             <div className="divide-y">
               {evaluations.length === 0 ? (
-                <div className="p-6 text-gray-500">No evaluations recorded.</div>
+                <EmptyState title="No evaluations recorded" description="Evaluations will appear here once submitted." />
               ) : (
                 evaluations.slice(0, 5).map((evaluation) => (
                   <div key={evaluation.evaluation_id} className="p-4 flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-muted">
                       Submitted {new Date(evaluation.submitted_at).toLocaleDateString()}
                     </p>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-800">{evaluation.overall_score}%</p>
+                      <p className="font-semibold text-ink">{evaluation.overall_score}</p>
                       <p className={`text-xs ${evaluation.approved ? 'text-green-600' : 'text-yellow-600'}`}>
                         {evaluation.approved ? 'Approved' : 'Pending approval'}
                       </p>
@@ -293,7 +258,7 @@ export default function ApprenticeDetail() {
                 ))
               )}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

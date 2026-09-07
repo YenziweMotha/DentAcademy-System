@@ -1,6 +1,6 @@
 export default function Logo({ size = 40, light = false }) {
-  const bg = light ? '#2A8A42' : '#E8F5ED';
-  const fg = light ? '#FFFFFF' : '#1B6B2F';
+  const bg = light ? '#0B5FFF' : '#E8F0FF';
+  const fg = light ? '#FFFFFF' : '#0747C2';
 
   return (
     <svg
