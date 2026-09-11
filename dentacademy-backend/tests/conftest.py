@@ -3,13 +3,16 @@ import sys
 import pathlib
 
 os.environ["DATABASE_URL"] = (
-    "mysql+pymysql://dentacademy:DentAcademy2026s@localhost:3306/dentacademy_test"
+    "mysql+pymysql://dent:dentpass@127.0.0.1:3306/dentacademy_test"
 )
-os.environ["JWT_SECRET_KEY"] = "test-jwt-secret"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-32chars-minimum!!"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["SMTP_HOST"] = ""
 os.environ["SMTP_USERNAME"] = ""
 os.environ["SMTP_PASSWORD"] = ""
+os.environ["DB_AUTO_CREATE"] = "1"
+os.environ["AUTO_CREATE_TABLES"] = "1"
+os.environ["AUTO_SEED"] = "0"
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 

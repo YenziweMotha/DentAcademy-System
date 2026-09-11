@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
+from middleware.rate_limit import enforce_rate_limit
 from middleware.auth_middleware import (
     get_current_user,
     require_admin_or_supervisor,
@@ -185,6 +186,13 @@ def send_message(
 ):
     if current_user.role != "Apprentice":
         raise HTTPException(status_code=403, detail="Only apprentices can send experience messages.")
+    enforce_rate_limit(
+        request,
+        scope="experience.send",
+        limit=30,
+        window_seconds=60,
+        identity=str(current_user.user_id),
+    )
     apprentice = _get_apprentice_for_user(db, current_user)
 
     try:
@@ -257,6 +265,13 @@ def send_message_channel_agnostic(
     """
     if current_user.role != "Apprentice":
         raise HTTPException(status_code=403, detail="Only apprentices can send experience messages.")
+    enforce_rate_limit(
+        request,
+        scope="experience.send_channel",
+        limit=30,
+        window_seconds=60,
+        identity=str(current_user.user_id),
+    )
     apprentice = _get_apprentice_for_user(db, current_user)
     conversation = get_or_create_active_conversation(db, apprentice, body.channel)
     db.flush()

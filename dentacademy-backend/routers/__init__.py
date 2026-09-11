@@ -11,3 +11,4 @@ from .dashboard import router as dashboard_router
 from .config import router as config_router
 from .experience_chat import router as experience_chat_router
 from .audit import router as audit_router
+from .attendance import router as attendance_router

@@ -77,23 +77,9 @@ def get_apprentice_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "Apprentice":
-        app = db.query(Apprentice).filter(
-            Apprentice.user_id == current_user.user_id
-        ).first()
-        if not app or app.apprentice_id != apprentice_id:
-            raise HTTPException(403, "Access denied")
-    elif current_user.role == "Mentor":
-        mentor = db.query(Mentor).filter(Mentor.user_id == current_user.user_id).first()
-        if not mentor:
-            raise HTTPException(403, "Mentor profile not found")
-        assigned = db.query(MentorAssignment).filter(
-            MentorAssignment.mentor_id == mentor.mentor_id,
-            MentorAssignment.apprentice_id == apprentice_id,
-            MentorAssignment.is_current == True,
-        ).first()
-        if not assigned:
-            raise HTTPException(403, "Not assigned to this apprentice")
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
     return (
         db.query(ModuleProgress)
         .filter(ModuleProgress.apprentice_id == apprentice_id)
@@ -107,7 +93,10 @@ def get_completion_percentage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    total = db.query(Module).filter(Module.is_active == True).count()
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
+    total = db.query(Module).filter(Module.is_active == True).count()  # noqa: E712
     if total == 0:
         return {"apprentice_id": apprentice_id, "completion_pct": 0.0, "total_modules": 0}
     completed = db.query(ModuleProgress).filter(
@@ -134,18 +123,12 @@ def update_progress(
     if current_user.role == "Apprentice":
         raise HTTPException(403, "Apprentices cannot update their own module progress")
 
-    # Mentor can only update their assigned apprentices
-    if current_user.role == "Mentor":
-        mentor = db.query(Mentor).filter(Mentor.user_id == current_user.user_id).first()
-        if not mentor:
-            raise HTTPException(403, "Mentor profile not found")
-        assigned = db.query(MentorAssignment).filter(
-            MentorAssignment.mentor_id == mentor.mentor_id,
-            MentorAssignment.apprentice_id == apprentice_id,
-            MentorAssignment.is_current == True,
-        ).first()
-        if not assigned:
-            raise HTTPException(403, "Not assigned to this apprentice")
+    from middleware.access_control import require_apprentice_access
+
+    # Mentors: assigned only; staff: any; apprentices already blocked above.
+    require_apprentice_access(
+        current_user, apprentice_id, db, allow_apprentice_self=False
+    )
 
     # Validate: if Completed, score and date required
     if progress_in.status == "Completed":

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 import os
@@ -18,19 +18,30 @@ from utils.security import (
 )
 from middleware.auth_middleware import get_current_user
 from middleware.audit_middleware import log_audit_action, get_client_ip
+from middleware.rate_limit import enforce_rate_limit
 from services.email_service import send_password_reset_email, smtp_enabled
 from services.config_service import get_int_setting, ensure_default_settings
+from utils.env_security import is_development
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class LoginData(BaseModel):
-    username: str
-    password: str
+    model_config = {"extra": "forbid"}
+
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 @router.post("/login", response_model=Token)
 def login(response: Response, request: Request, form_data: LoginData, db: Session = Depends(get_db)):
+    enforce_rate_limit(
+        request,
+        scope="auth.login",
+        limit=20,
+        window_seconds=60,
+        identity=(form_data.username or "").lower()[:64],
+    )
     ensure_default_settings(db)
     ip = get_client_ip(request)
     user = db.query(User).filter(User.username == form_data.username).first()
@@ -39,7 +50,7 @@ def login(response: Response, request: Request, form_data: LoginData, db: Sessio
 
     # Generic failure for unknown usernames: do not reveal whether a
     # username exists (SRS §7).
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -134,6 +145,13 @@ def password_reset_request(
     db: Session = Depends(get_db),
 ):
     """Request a password reset. A single-use 30-minute token is emailed."""
+    enforce_rate_limit(
+        request,
+        scope="auth.reset_request",
+        limit=5,
+        window_seconds=300,
+        identity=(str(body.email) or "").lower()[:128],
+    )
     ensure_default_settings(db)
     ip = get_client_ip(request)
     user = db.query(User).filter(User.email == body.email).first()
@@ -149,7 +167,7 @@ def password_reset_request(
         log_audit_action(db, "PASSWORD_RESET_REQUEST", user.user_id, "User",
                          user.user_id, ip_address=ip)
         sent = send_password_reset_email(user.email, token)
-        if os.getenv("ENVIRONMENT", "production") == "development" and not sent:
+        if is_development() and not sent:
             # Development fallback: expose the token so flows can be tested
             # without a live SMTP server.
             return {"message": "Reset token issued (development).", "dev_token": token}
@@ -167,6 +185,13 @@ def password_reset_confirm(
     db: Session = Depends(get_db),
 ):
     """Complete a password reset with email + single-use token + new password."""
+    enforce_rate_limit(
+        request,
+        scope="auth.reset_confirm",
+        limit=10,
+        window_seconds=300,
+        identity=(str(body.email) or "").lower()[:128],
+    )
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not user.reset_token or not user.reset_token_expiry:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")

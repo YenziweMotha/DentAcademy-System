@@ -49,8 +49,13 @@ def ensure_database():
     if not DATABASE_URL.startswith(("mysql+pymysql", "mysql://")):
         return
 
+    import re
+
     parts = urlsplit(DATABASE_URL)
     db_name = parts.path.lstrip("/") or "dentacademy_db"
+    # Reject path injection into CREATE DATABASE identifier.
+    if not re.fullmatch(r"[A-Za-z0-9_]+", db_name):
+        raise ValueError("DATABASE_URL database name contains invalid characters")
     user = quote_plus(parts.username or "")
     password = quote_plus(parts.password or "")
     netloc = parts.hostname or "localhost"

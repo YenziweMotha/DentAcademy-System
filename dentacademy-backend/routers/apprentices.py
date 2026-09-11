@@ -34,9 +34,11 @@ from utils.security import (
     generate_username,
     generate_credential_password,
 )
+from utils.env_security import allow_credential_reveal
 from services.email_service import send_account_credentials_email
 import os
 from datetime import datetime
+from pathlib import Path
 
 router = APIRouter(prefix="/api/apprentices", tags=["apprentices"])
 
@@ -63,18 +65,25 @@ def _completion_pct(app: Apprentice, db: Session) -> float:
     return round((completed / total) * 100, 2)
 
 
+def _public_photo_url(app: Apprentice) -> Optional[str]:
+    """Never expose filesystem paths — only the authorised API photo route."""
+    if not app.photo_url:
+        return None
+    return f"/api/apprentices/{app.apprentice_id}/photo"
+
+
 def _enrich_apprentice_out(app: Apprentice, db: Session) -> dict:
     data = {
         "apprentice_id": app.apprentice_id,
         "surname": app.surname,
         "first_name": app.first_name,
-"id_number": mask_id_number(app.id_number),
+        "id_number": mask_id_number(app.id_number),
         "gender": app.gender,
         "contact_number": app.contact_number,
         "email": app.email,
         "city": app.city,
         "province": app.province,
-        "photo_url": app.photo_url,
+        "photo_url": _public_photo_url(app),
         "status": app.status,
         "created_at": app.created_at,
         "updated_at": app.updated_at,
@@ -268,10 +277,11 @@ def _complete_registration(
 
     data = _enrich_apprentice_detail(app, db)
     if app_user is not None:
+        reveal = allow_credential_reveal() and not credentials_sent and password
         data["account_credentials"] = {
             "username": app_user.username,
             "sent": credentials_sent,
-            "password": None if credentials_sent else password,
+            "password": password if reveal else None,
             "existing_account": password is None,
         }
     return data
@@ -446,10 +456,11 @@ def create_apprentice(
     )
     data = _enrich_apprentice_detail(app, db)
     if app_user is not None:
+        reveal = allow_credential_reveal() and not credentials_sent and password
         data["account_credentials"] = {
             "username": app_user.username,
             "sent": credentials_sent,
-            "password": None if credentials_sent else password,
+            "password": password if reveal else None,
             "existing_account": existing_user is not None,
         }
     return data
@@ -495,15 +506,9 @@ def get_apprentice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    app = db.query(Apprentice).filter(
-        Apprentice.apprentice_id == apprentice_id,
-    ).first()
-    if not app:
-        raise HTTPException(404, "Apprentice not found")
-    if current_user.role == "Apprentice" and app.user_id != current_user.user_id:
-        raise HTTPException(403, "Access denied")
-    if current_user.role == "Mentor":
-        _check_mentor_access(current_user, apprentice_id, db)
+    from middleware.access_control import require_apprentice_access
+
+    app = require_apprentice_access(current_user, apprentice_id, db)
     return _enrich_apprentice_detail(app, db)
 
 
@@ -559,6 +564,10 @@ def deactivate_apprentice(
         raise HTTPException(404, "Apprentice not found")
     app.status = "INACTIVE"
     app.updated_at = datetime.utcnow()
+    if app.user_id:
+        linked = db.query(User).filter(User.user_id == app.user_id).first()
+        if linked:
+            linked.is_active = False
     db.commit()
     log_audit_action(
         db,
@@ -566,7 +575,7 @@ def deactivate_apprentice(
         current_user.user_id,
         "Apprentice",
         app.apprentice_id,
-        new_value={"status": "INACTIVE"},
+        new_value={"status": "INACTIVE", "user_deactivated": bool(app.user_id)},
         ip_address=get_client_ip(request),
     )
     return {"message": "Apprentice deactivated", "apprentice_id": apprentice_id}
@@ -586,6 +595,10 @@ def reactivate_apprentice(
         raise HTTPException(404, "Apprentice not found")
     app.status = "ACTIVE"
     app.updated_at = datetime.utcnow()
+    if app.user_id:
+        linked = db.query(User).filter(User.user_id == app.user_id).first()
+        if linked:
+            linked.is_active = True
     db.commit()
     log_audit_action(
         db,
@@ -593,7 +606,7 @@ def reactivate_apprentice(
         current_user.user_id,
         "Apprentice",
         app.apprentice_id,
-        new_value={"status": "ACTIVE"},
+        new_value={"status": "ACTIVE", "user_reactivated": bool(app.user_id)},
         ip_address=get_client_ip(request),
     )
     return {"message": "Apprentice reactivated", "apprentice_id": apprentice_id}
@@ -605,6 +618,20 @@ def _detect_image_type(content: bytes) -> Optional[str]:
     if content.startswith(PNG_MAGIC):
         return "png"
     return None
+
+
+def _safe_upload_path(stored: str) -> Path:
+    """Resolve stored photo paths only under UPLOAD_DIR (filename or legacy abs)."""
+    base = Path(UPLOAD_DIR).resolve()
+    raw = Path(stored)
+    candidate = (base / raw.name).resolve() if not raw.is_absolute() else raw.resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        raise HTTPException(404, "No photograph recorded")
+    if not candidate.is_file():
+        raise HTTPException(404, "No photograph recorded")
+    return candidate
 
 
 @router.post("/{apprentice_id}/photo", status_code=200)
@@ -632,12 +659,16 @@ def upload_photo(
     path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
         f.write(content)
-    if app.photo_url and os.path.exists(app.photo_url):
+    if app.photo_url:
         try:
-            os.remove(app.photo_url)
+            old = _safe_upload_path(app.photo_url)
+            old.unlink(missing_ok=True)
+        except HTTPException:
+            pass
         except OSError:
             pass
-    app.photo_url = path
+    # Persist filename only; resolve under UPLOAD_DIR on read.
+    app.photo_url = filename
     db.commit()
     log_audit_action(
         db,
@@ -647,7 +678,7 @@ def upload_photo(
         apprentice_id,
         ip_address=get_client_ip(request),
     )
-    return {"photo_url": path}
+    return {"photo_url": _public_photo_url(app)}
 
 
 @router.get("/{apprentice_id}/photo")
@@ -657,19 +688,14 @@ def get_photo(
     current_user: User = Depends(get_current_user),
 ):
     """Serve the apprentice photograph through an authorised endpoint only."""
-    app = db.query(Apprentice).filter(
-        Apprentice.apprentice_id == apprentice_id
-    ).first()
-    if not app:
-        raise HTTPException(404, "Apprentice not found")
-    if current_user.role == "Apprentice" and app.user_id != current_user.user_id:
-        raise HTTPException(403, "Access denied")
-    if current_user.role == "Mentor":
-        _check_mentor_access(current_user, apprentice_id, db)
-    if not app.photo_url or not os.path.exists(app.photo_url):
+    from middleware.access_control import require_apprentice_access
+
+    app = require_apprentice_access(current_user, apprentice_id, db)
+    if not app.photo_url:
         raise HTTPException(404, "No photograph recorded")
-    media_type = "image/jpeg" if app.photo_url.lower().endswith(".jpg") else "image/png"
-    return FileResponse(app.photo_url, media_type=media_type)
+    path = _safe_upload_path(app.photo_url)
+    media_type = "image/jpeg" if path.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+    return FileResponse(path, media_type=media_type)
 
 
 @router.get("/{apprentice_id}/education", response_model=EducationOut)
@@ -678,8 +704,9 @@ def get_education(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "Mentor":
-        _check_mentor_access(current_user, apprentice_id, db)
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
     edu = db.query(Education).filter(
         Education.apprentice_id == apprentice_id
     ).first()

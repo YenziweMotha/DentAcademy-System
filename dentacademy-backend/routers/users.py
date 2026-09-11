@@ -176,8 +176,14 @@ def create_user(
     result["apprentice_id"] = apprentice_id
     result["apprentice_registered"] = apprentice_registered
     result["mentor_id"] = mentor_id
-    if not sent:
+    from utils.env_security import allow_credential_reveal
+    if not sent and allow_credential_reveal():
         result["dev_password"] = password
+    elif not sent:
+        result["credentials_delivery"] = (
+            "Password generated but email delivery failed. "
+            "Use password-reset for the user — plaintext password is not returned in production."
+        )
     return result
 
 

@@ -19,12 +19,9 @@ def get_apprentice_attendance(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "Apprentice":
-        app = db.query(Apprentice).filter(
-            Apprentice.user_id == current_user.user_id
-        ).first()
-        if not app or app.apprentice_id != apprentice_id:
-            raise HTTPException(403, "Access denied")
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
     return (
         db.query(Attendance)
         .filter(Attendance.apprentice_id == apprentice_id)

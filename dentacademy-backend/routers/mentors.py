@@ -30,10 +30,10 @@ class AssignApprenticeBody(BaseModel):
 
 @router.get("", response_model=List[MentorOut])
 def list_mentors(
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
     return db.query(Mentor).offset(skip).limit(limit).all()
 
@@ -76,6 +76,10 @@ def get_mentor(
     mentor = db.query(Mentor).filter(Mentor.mentor_id == mentor_id).first()
     if not mentor:
         raise HTTPException(404, "Mentor not found")
+    if current_user.role == "Mentor" and mentor.user_id != current_user.user_id:
+        raise HTTPException(403, "Access denied")
+    if current_user.role == "Apprentice":
+        raise HTTPException(403, "Access denied")
     return mentor
 
 
@@ -115,9 +119,13 @@ def get_mentor_assignments(
     mentor = db.query(Mentor).filter(Mentor.mentor_id == mentor_id).first()
     if not mentor:
         raise HTTPException(404, "Mentor not found")
+    if current_user.role == "Apprentice":
+        raise HTTPException(403, "Access denied")
+    if current_user.role == "Mentor" and mentor.user_id != current_user.user_id:
+        raise HTTPException(403, "Access denied")
     q = db.query(MentorAssignment).filter(MentorAssignment.mentor_id == mentor_id)
     if current_only:
-        q = q.filter(MentorAssignment.is_current == True)
+        q = q.filter(MentorAssignment.is_current == True)  # noqa: E712
     return q.all()
 
 

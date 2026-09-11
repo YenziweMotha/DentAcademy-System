@@ -22,12 +22,14 @@ def validate_password_strength(v: str) -> str:
 
 
 class UserCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
     username: Optional[str] = None
     email: EmailStr
     password: Optional[str] = None
     full_name: str
     role: str
-    # Used to build a credential-combination password when `password` is omitted.
+    # Used when auto-generating a password (name/id are NOT used as password material).
     id_number: Optional[str] = None
     contact_number: Optional[str] = None
 
@@ -47,6 +49,8 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     role: Optional[str] = None

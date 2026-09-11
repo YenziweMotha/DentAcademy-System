@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.exc import IntegrityError
 from routers import (
     auth_router,
@@ -20,8 +21,10 @@ from routers import (
     config_router,
     experience_chat_router,
     audit_router,
+    attendance_router,
 )
 from middleware.auth_middleware import SecurityHeadersMiddleware
+from utils.env_security import is_development
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +34,9 @@ logger = logging.getLogger("dentacademy")
 
 # NOTE: Schema is managed by Alembic migrations, not create_all.
 
+_IS_PROD = not is_development()
+_MAX_BODY = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(2 * 1024 * 1024)))
+
 app = FastAPI(
     title="DentAcademy Management Portal",
     description=(
@@ -39,7 +45,28 @@ app = FastAPI(
         "See /redoc for the full schema."
     ),
     version="1.0.0",
+    docs_url=None if _IS_PROD else "/docs",
+    redoc_url=None if _IS_PROD else "/redoc",
+    openapi_url=None if _IS_PROD else "/openapi.json",
 )
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        cl = request.headers.get("content-length")
+        if cl is not None:
+            try:
+                if int(cl) > _MAX_BODY:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body too large."},
+                    )
+            except ValueError:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length header."},
+                )
+        return await call_next(request)
 
 
 # ------------------------------------------------------------------
@@ -60,11 +87,10 @@ CORS_ORIGINS = [
     if o.strip()
 ]
 
-# Allow Cloudflare quick-tunnel frontends (and localhost) when calling the API tunnel.
-_CORS_ORIGIN_REGEX = os.getenv(
-    "CORS_ORIGIN_REGEX",
-    r"https://.*\.trycloudflare\.com",
-).strip() or None
+# Cloudflare quick-tunnel regex is development-only unless explicitly set.
+_CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", "").strip() or None
+if _CORS_ORIGIN_REGEX is None and not _IS_PROD:
+    _CORS_ORIGIN_REGEX = r"https://.*\.trycloudflare\.com"
 
 app.add_middleware(
     CORSMiddleware,
@@ -75,6 +101,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware)
 
 
 # ------------------------------------------------------------------
@@ -139,6 +166,13 @@ app.include_router(dashboard_router)
 app.include_router(config_router)
 app.include_router(experience_chat_router)
 app.include_router(audit_router)
+app.include_router(attendance_router)
+
+
+@app.get("/health", tags=["health"])
+def health():
+    """Liveness probe — no auth, no sensitive data (used by Render health checks)."""
+    return {"status": "ok"}
 
 
 # ------------------------------------------------------------------

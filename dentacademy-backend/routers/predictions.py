@@ -111,6 +111,10 @@ def get_latest_prediction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
+
     prediction = (
         db.query(AIPrediction)
         .filter(AIPrediction.apprentice_id == apprentice_id)
@@ -120,15 +124,10 @@ def get_latest_prediction(
     if not prediction:
         raise HTTPException(status_code=404, detail="No prediction found")
 
-    if current_user.role == "Apprentice":
-        apprentice = db.query(Apprentice).filter(
-            Apprentice.apprentice_id == apprentice_id
-        ).first()
-        if apprentice.user_id != current_user.user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        return PredictionSafeOut.model_validate(prediction, from_attributes=True)
-
-    return PredictionDetailOut.model_validate(prediction, from_attributes=True)
+    # Full feature snapshot / dropout risk only for staff; apprentices get safe view.
+    if current_user.role in ("Administrator", "Supervisor"):
+        return PredictionDetailOut.model_validate(prediction, from_attributes=True)
+    return PredictionSafeOut.model_validate(prediction, from_attributes=True)
 
 
 @router.get("/{apprentice_id}/history", response_model=List[PredictionDetailOut])

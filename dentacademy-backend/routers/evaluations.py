@@ -29,11 +29,13 @@ def _get_mentor_for_user(user: User, db: Session) -> Mentor:
 def list_evaluations(
     apprentice_id: Optional[int] = Query(None),
     approved: Optional[bool] = Query(None),
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from middleware.access_control import require_apprentice_access
+
     q = db.query(Evaluation)
     if current_user.role == "Apprentice":
         app = db.query(Apprentice).filter(
@@ -49,8 +51,11 @@ def list_evaluations(
             MentorAssignment.is_current == True,
         ).all()
         ids = [r[0] for r in assigned_ids]
+        if not ids:
+            return []
         q = q.filter(Evaluation.apprentice_id.in_(ids))
-    if apprentice_id:
+    if apprentice_id is not None:
+        require_apprentice_access(current_user, apprentice_id, db)
         q = q.filter(Evaluation.apprentice_id == apprentice_id)
     if approved is not None:
         q = q.filter(Evaluation.approved == approved)
@@ -194,15 +199,12 @@ def get_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from middleware.access_control import require_apprentice_access
+
     ev = db.query(Evaluation).filter(Evaluation.evaluation_id == evaluation_id).first()
     if not ev:
         raise HTTPException(404, "Evaluation not found")
-    if current_user.role == "Apprentice":
-        app = db.query(Apprentice).filter(
-            Apprentice.user_id == current_user.user_id
-        ).first()
-        if not app or app.apprentice_id != ev.apprentice_id:
-            raise HTTPException(403, "Access denied")
+    require_apprentice_access(current_user, ev.apprentice_id, db)
     return ev
 
 
@@ -245,12 +247,9 @@ def get_apprentice_evaluations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "Apprentice":
-        app = db.query(Apprentice).filter(
-            Apprentice.user_id == current_user.user_id
-        ).first()
-        if not app or app.apprentice_id != apprentice_id:
-            raise HTTPException(403, "Access denied")
+    from middleware.access_control import require_apprentice_access
+
+    require_apprentice_access(current_user, apprentice_id, db)
     return (
         db.query(Evaluation)
         .filter(Evaluation.apprentice_id == apprentice_id)

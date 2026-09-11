@@ -1,25 +1,31 @@
 import os
-import random
 import re
-import string
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
 import bcrypt
 from fastapi import HTTPException, status
 
+from utils.env_security import generate_secure_password
+
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+# Hardcode HS256 to prevent algorithm confusion / operator misconfiguration.
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRY_MINUTES", "60"))
 BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
 
 DEFAULT_SECRET = "dentacademy-secret-key-change-in-production-32chars"
 
-if SECRET_KEY is None or (SECRET_KEY == DEFAULT_SECRET and os.getenv("ENVIRONMENT", "production") == "production"):
+_env = os.getenv("ENVIRONMENT", "production").lower()
+if SECRET_KEY is None or (
+    SECRET_KEY == DEFAULT_SECRET and _env not in {"development", "dev", "test", "local"}
+):
     raise RuntimeError(
         "JWT_SECRET_KEY must be set to a strong secret in production. "
         "Refusing to start with an insecure default."
     )
+if SECRET_KEY and len(SECRET_KEY) < 32 and _env not in {"development", "dev", "test", "local"}:
+    raise RuntimeError("JWT_SECRET_KEY must be at least 32 characters in production.")
 
 
 def get_password_hash(password: str) -> str:
@@ -70,37 +76,23 @@ def generate_username(full_name: str, email: str = "", db=None) -> str:
 
 
 def generate_credential_password(
-    full_name: str,
+    full_name: str = "",
     id_number: Optional[str] = None,
     contact_number: Optional[str] = None,
     email: str = "",
 ) -> str:
-    """Build a strong password from the person's own credentials.
+    """Generate a cryptographically random password meeting strength rules.
 
-    The password is a deterministic combination of their name, identity
-    number, contact number and email, so it is memorable to the owner but
-    still satisfies the strength rules (upper, lower, digit, special).
+    Arguments are accepted for call-site compatibility but are intentionally
+    unused — passwords must not be derivable from public identity fields.
     """
-    parts = [p for p in (full_name or "").split() if p.strip()]
-    first = _clean_name_part(parts[0] if parts else "", "Apprentice").capitalize()
-    last = _clean_name_part(parts[-1] if len(parts) > 1 else "", "User").capitalize()
-
-    digits = ""
-    for source in (id_number, contact_number, email):
-        if source:
-            digits += "".join(ch for ch in str(source) if ch.isdigit())
-    digits = digits[-6:]
-
-    if len(digits) < 4:
-        digits = (digits + "2026").zfill(4)[:4]
-
-    special = random.choice("!@#$%&")
-    password = f"{first}{special}{last}{digits}!"
-    return password[:24]
+    _ = (full_name, id_number, contact_number, email)
+    return generate_secure_password(16)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
+    # Role in the JWT is informational only; authorization uses the DB role.
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "iat": datetime.utcnow()})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -108,7 +100,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "iat"]},
+        )
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(

@@ -5,8 +5,26 @@ from database import get_db
 from models.user import User
 from utils.security import decode_access_token
 from starlette.middleware.base import BaseHTTPMiddleware
+import os
 
 security_scheme = HTTPBearer(auto_error=False)
+
+
+def _csp_connect_src() -> list[str]:
+    origins = ["'self'"]
+    env = os.getenv("ENVIRONMENT", "production").lower()
+    if env in {"development", "dev", "test", "local"}:
+        origins.extend(
+            [
+                "http://localhost:8000",
+                "http://localhost:3000",
+                "https://*.trycloudflare.com",
+            ]
+        )
+    extra = os.getenv("CSP_CONNECT_SRC", "").strip()
+    if extra:
+        origins.extend(p for p in extra.split() if p)
+    return origins
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -17,15 +35,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
-      "default-src 'self'; "
-      "script-src 'self' 'unsafe-inline'; "
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-      "font-src 'self' https://fonts.gstatic.com; "
-      "img-src 'self' data: blob:; "
-      "connect-src 'self' http://localhost:8000 http://localhost:3000 https://*.trycloudflare.com;"
-    )
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: blob:; "
+            f"connect-src {' '.join(_csp_connect_src())};"
+        )
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        # Avoid caching authenticated API responses in shared caches/browsers.
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
         return response
 
 
@@ -71,6 +97,7 @@ def require_role(roles: list):
                 detail=f"Access denied. Required roles: {roles}",
             )
         return current_user
+
     return role_checker
 
 
