@@ -10,6 +10,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import StatCard from '../../components/ui/StatCard';
 import { BookOpen, Gauge, ClipboardCheck, TrendingUp, Download, ArrowLeft } from 'lucide-react';
+import PredictionSignal from '../../components/shared/PredictionSignal';
 
 export default function Performance() {
   const { apprenticeId } = useParams();
@@ -323,79 +324,18 @@ export default function Performance() {
       </Card>
 
 
-      {/* AI PREDICTION */}
-
-      <Card padding={false} className="mb-6">
-
-        <div className="p-6 border-b">
-
-          <h2 className="text-lg font-semibold">
-            AI Performance Prediction
-          </h2>
-
+      {!prediction ? (
+        <Card className="mb-6">
+          <EmptyState title="No AI prediction" description="Generate a prediction once sufficient performance data is available." />
+        </Card>
+      ) : (
+        <div className="mb-6">
+          <PredictionSignal
+            prediction={prediction}
+            name={`${apprentice.first_name} ${apprentice.surname}`}
+          />
         </div>
-
-        <div className="p-6">
-
-          {!prediction ? (
-
-            <EmptyState title="No AI prediction" description="Generate a prediction once sufficient performance data is available." />
-
-          ) : (
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-              <div>
-                <p className="text-sm text-ink-muted">
-                  Dropout Risk
-                </p>
-
-                <p className="text-2xl font-bold">
-                  {prediction.dropout_risk ?? 'N/A'}%
-                </p>
-
-                <p className="text-sm">
-                  {prediction.risk_label}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-ink-muted">
-                  Completion Likelihood
-                </p>
-
-                <p className="text-2xl font-bold">
-                  {prediction.completion_likelihood ?? 'N/A'}%
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-ink-muted">
-                  Employment Readiness
-                </p>
-
-                <p className="text-2xl font-bold">
-                  {prediction.employment_readiness ?? 'N/A'}%
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-ink-muted">
-                  Confidence
-                </p>
-
-                <p className="text-2xl font-bold">
-                  {prediction.confidence_score ?? 'N/A'}%
-                </p>
-              </div>
-
-            </div>
-
-          )}
-
-        </div>
-
-      </Card>
+      )}
 
     </div>
   );
