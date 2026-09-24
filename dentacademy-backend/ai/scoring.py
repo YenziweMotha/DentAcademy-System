@@ -1,12 +1,13 @@
 """Shared feature contract and domain scoring for dropout/completion predictions.
 
-The Random Forest is trained to approximate `expert_completion_score`.
-When real completed/dropped-out labels exist, keep FEATURE_NAMES and retrain.
+The shipped forest is trained on cleaned OULAD outcomes. FEATURE_NAMES is
+still the live portal vector. The pickle names the columns it actually uses.
+`expert_completion_score` is the fallback when that pickle cannot run.
 """
 
 from typing import Any, Dict, List, Optional
 
-MODEL_VERSION = "rf-completion-v2"
+MODEL_VERSION = "rf-oulad-v1"
 FALLBACK_VERSION = "expert-heuristic-v2"
 
 FEATURE_NAMES = [

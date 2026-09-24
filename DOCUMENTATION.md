@@ -199,32 +199,17 @@ Defined in `FEATURE_NAMES`:
 
 ### How the model was trained
 
-There are **not yet** enough historically labelled completed-vs-dropped apprentices in production data. Training therefore uses a **synthetic dataset** that mirrors the same 12 features.
+The shipped pickle is **`rf-oulad-v1`**, trained on the cleaned Open University Learning Analytics Dataset. Cleaning steps, row counts, and hold-out metrics are in `dentacademy-backend/ai/TRAINING.md`. The forest uses four live features (`academic_avg_mark`, `module_completion_pct`, `avg_assessment_score`, `attendance_rate`) and a real Pass/Distinction vs Fail/Withdrawn label. Mentor ratings are not in that dataset, so they are not model inputs. The expert formula below is the fallback when the pickle cannot run.
 
-Process (`python -m ai.train` from the backend, or `ai/train.py`):
+Process (`python ai/prepare_oulad.py`, then `python -m ai.train`):
 
-1. Generate ~**4000** synthetic feature rows (`generate_synthetic_data`)
-   - Majority “typical” apprentices + a smaller “weak” cohort (lower academics, attendance, ratings)
-2. Label each row with the **domain expert heuristic** `expert_completion_score` (weighted mix of attendance, module completion, academics, assessments, mentor ratings, eval trend)
-3. Add small Gaussian noise to labels and clamp to 0–100
-4. Train/test split **80/20**, random seed **42**
-5. Fit a **`RandomForestRegressor`**:
-   - `n_estimators=200`
-   - `max_depth=10`
-   - `min_samples_leaf=6`
-6. Save a joblib **bundle** to `ai/model.pkl`:
+1. Clean OULAD into `ai/data/oulad_training.csv` (32,593 student-module rows).
+2. Label Pass/Distinction as 100 and Fail/Withdrawn as 0.
+3. Train/test split **80/20**, random seed **42**.
+4. Fit a **`RandomForestRegressor`** (`n_estimators=200`, `max_depth=10`, `min_samples_leaf=6`).
+5. Save `ai/model.pkl` as version `rf-oulad-v1` with `blend_with_expert: false`.
 
-```text
-{
-  "version": "rf-completion-v2",
-  "feature_names": [...],
-  "estimator": <RandomForestRegressor>,
-  "trained_at": ...,
-  "metrics": { MAE, R², ... }
-}
-```
-
-The forest learns to **approximate** the expert scoring function smoothly (instead of a single hard pass/fail cut-off). When real completion/dropout outcomes exist, replace `generate_synthetic_data` with a loader of real labels; the fit/save step stays the same.
+Hold-out MAE is about 10 points, R² about 0.79, and accuracy at a score of 50 is about 0.93. Module completion dominates the importances because submitting the assessment bank is the strongest signal in this dataset.
 
 ### Expert heuristic (labels + fallback)
 
@@ -245,10 +230,7 @@ If the pickle is missing or inference fails, the system falls back to this heuri
 
 1. Staff call `POST /api/predictions/{apprentice_id}/generate` (admin/supervisor)
 2. `build_feature_vector` reads live DB rows
-3. `PredictionModel.predict`:
-   - Runs the Random Forest → completion score
-   - Computes expert score on the same features
-   - **Blends:** `0.75 × forest + 0.25 × expert` (keeps extreme profiles from being over-smoothed)
+3. `PredictionModel.predict` runs the forest on the four OULAD features. `rf-oulad-v1` does not blend in the expert score. Older bundles that set `blend_with_expert` still use `0.75 × forest + 0.25 × expert`.
 4. Derives `dropout_risk`, `employment_readiness`, `confidence_score` (tree disagreement + eval count + score extremity)
 5. Persists an `AIPrediction` row including `feature_snapshot_json` for auditability (FR-30/FR-32)
 

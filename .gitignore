@@ -13,6 +13,7 @@ dist/
 mysql_data*/
 uploads/
 ml_models/
+dentacademy-backend/ai/data/raw/
 reports_output/
 
 # Environment

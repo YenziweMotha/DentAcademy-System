@@ -1,0 +1,37 @@
+{
+  "source": "Open University Learning Analytics Dataset (OULAD)",
+  "licence": "CC BY 4.0",
+  "grain": "one row per student-module-presentation",
+  "label": "100 if final_result in {Pass, Distinction}, else 0",
+  "features": [
+    "academic_avg_mark",
+    "module_completion_pct",
+    "avg_assessment_score",
+    "attendance_rate"
+  ],
+  "dropped": {},
+  "blank_assessment_scores_ignored": 173,
+  "rows_in": 32593,
+  "rows_kept": 32593,
+  "final_result_counts": {
+    "Pass": 12361,
+    "Withdrawn": 10156,
+    "Fail": 7052,
+    "Distinction": 3024
+  },
+  "positive_rate": 0.472,
+  "cleaning_steps": [
+    "Read assessments.csv and attach each assessment to its module presentation.",
+    "Ignore studentAssessment rows whose score is blank; a missing row means the assessment was not submitted.",
+    "Sum studentVle sum_click per student-module-presentation. No click rows means 0 clicks.",
+    "Drop registrations whose final_result is not Pass, Distinction, Fail, or Withdrawn.",
+    "Drop module presentations that have no assessments, because completion cannot be defined.",
+    "Drop duplicate registrations for the same student, module, and presentation.",
+    "academic_avg_mark is the unweighted mean of submitted scores, or 0 when nothing was submitted.",
+    "avg_assessment_score is the weight-weighted mean of submitted scores. If every submitted weight is 0, it falls back to the unweighted mean.",
+    "module_completion_pct is 100 * submitted assessments / assessments in that presentation.",
+    "attendance_rate is the percentile of total clicks inside the same module presentation, from 0 to 100. Ties share the average rank.",
+    "Label is 100 for Pass and Distinction, and 0 for Fail and Withdrawn.",
+    "Gender, region, IMD band, age, disability, education, and credits are not used."
+  ]
+}

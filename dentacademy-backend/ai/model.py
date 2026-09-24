@@ -56,6 +56,8 @@ class PredictionModel:
         self.feature_names: List[str] = list(FEATURE_NAMES)
         self.version = FALLBACK_VERSION
         self.loaded_path = None
+        self.blend_with_expert = True
+        self.output_scale = "auto"
 
         seen = set()
         for path in candidate_paths:
@@ -74,6 +76,8 @@ class PredictionModel:
                 self.model = loaded["estimator"]
                 self.feature_names = list(loaded.get("feature_names") or FEATURE_NAMES)
                 self.version = loaded.get("version") or MODEL_VERSION
+                self.blend_with_expert = bool(loaded.get("blend_with_expert", True))
+                self.output_scale = loaded.get("output_scale") or "auto"
             elif hasattr(loaded, "predict"):
                 self.model = loaded
                 n_in = int(getattr(loaded, "n_features_in_", len(FEATURE_NAMES)))
@@ -151,7 +155,7 @@ class PredictionModel:
             return float(max(proba)) * 100.0
 
         raw = float(self.model.predict([vector])[0])
-        if raw <= 1.5:
+        if self.output_scale == "0-1" or (self.output_scale == "auto" and raw <= 1.5):
             return raw * 100.0
         return raw
 
@@ -167,9 +171,9 @@ class PredictionModel:
                     f"Feature length {len(vector)} does not match model ({expected})"
                 )
             completion = self._completion_from_estimator(vector)
-            expert = expert_completion_score(features)
-            # Blend so extreme profiles are not shrunk all the way to the mean.
-            completion = 0.75 * completion + 0.25 * expert
+            if self.blend_with_expert:
+                expert = expert_completion_score(features)
+                completion = 0.75 * completion + 0.25 * expert
             return self._pack(
                 completion,
                 features,

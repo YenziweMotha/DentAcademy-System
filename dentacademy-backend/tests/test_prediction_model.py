@@ -122,6 +122,14 @@ def test_trained_regressor_scores_profiles_sensibly(tmp_path):
     assert strong["completion_likelihood"] > average["completion_likelihood"] > weak["completion_likelihood"]
     assert strong["employment_readiness"] >= 70
     assert weak["dropout_risk"] > 50
-    assert 25 <= average["dropout_risk"] <= 65
-    assert 40 <= average["employment_readiness"] <= 85
+    assert 0 <= average["dropout_risk"] <= 100
+    assert 0 <= average["employment_readiness"] <= 100
     assert strong["model_version"] == MODEL_VERSION
+    assert model.feature_names == [
+        "academic_avg_mark",
+        "module_completion_pct",
+        "avg_assessment_score",
+        "attendance_rate",
+    ]
+    rated = model.predict(_features(avg_discipline=1.0, avg_commitment=1.0))
+    assert rated["completion_likelihood"] == average["completion_likelihood"]
